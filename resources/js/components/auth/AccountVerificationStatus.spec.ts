@@ -20,6 +20,7 @@ function makeUser(isVerified: boolean): User {
     avatar_url: null,
     is_admin: false,
     is_email_verified: isVerified,
+    phone: null,
   }
 }
 

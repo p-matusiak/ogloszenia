@@ -45,6 +45,25 @@ const routes: RouteRecordRaw[] = [
     meta: { requiresAuth: true, title: 'Moje ogłoszenia' },
   },
   {
+    path: '/ulubione',
+    name: 'favorites',
+    component: () => import('@/views/FavoritesView.vue'),
+    meta: { requiresAuth: true, title: 'Ulubione ogłoszenia' },
+  },
+  {
+    path: '/wiadomosci',
+    name: 'messages',
+    component: () => import('@/views/MessagesView.vue'),
+    meta: { requiresAuth: true, title: 'Wiadomości' },
+  },
+  {
+    path: '/wiadomosci/:id',
+    name: 'messages.show',
+    component: () => import('@/views/ConversationView.vue'),
+    props: true,
+    meta: { requiresAuth: true, title: 'Rozmowa' },
+  },
+  {
     path: '/moje-ogloszenia/:slug/edytuj',
     name: 'ads.edit',
     component: () => import('@/views/AdEditView.vue'),

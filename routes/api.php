@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\Api\V1\AdMessagesController;
 use App\Http\Controllers\Api\V1\Admin\AdModerationController;
 use App\Http\Controllers\Api\V1\Admin\AdReportsController as AdminAdReportsController;
 use App\Http\Controllers\Api\V1\Admin\AdsController as AdminAdsController;
@@ -13,7 +14,9 @@ use App\Http\Controllers\Api\V1\AdReportsController;
 use App\Http\Controllers\Api\V1\AdsController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\CategoriesController;
+use App\Http\Controllers\Api\V1\ConversationsController;
 use App\Http\Controllers\Api\V1\EmailVerificationNotificationController;
+use App\Http\Controllers\Api\V1\FavoritesController;
 use App\Http\Controllers\Api\V1\MyAdsController;
 use App\Http\Controllers\Api\V1\PasswordResetController;
 use Illuminate\Support\Facades\Route;
@@ -50,6 +53,24 @@ Route::prefix('v1')->group(function (): void {
             ->middleware('throttle:6,1');
 
         Route::get('my/ads', MyAdsController::class);
+
+        // Ulubione: obserwowanie ogłoszeń nie wymaga zweryfikowanego adresu —
+        // to akcja czytelnika, nie publikacja treści. Lista i identyfikatory
+        // (do serduszek na froncie) obok dodawania/usuwania.
+        Route::get('my/favorites', [FavoritesController::class, 'index']);
+        Route::get('my/favorites/ids', [FavoritesController::class, 'ids']);
+        Route::post('ads/{ad}/favorite', [FavoritesController::class, 'store']);
+        Route::delete('ads/{ad}/favorite', [FavoritesController::class, 'destroy']);
+
+        // Wiadomości między kupującym a sprzedającym — tylko zalogowani.
+        Route::get('my/conversations', [ConversationsController::class, 'index']);
+        Route::get('my/conversations/unread-count', [ConversationsController::class, 'unreadCount']);
+        Route::get('conversations/{conversation}', [ConversationsController::class, 'show']);
+        Route::get('conversations/{conversation}/messages', [ConversationsController::class, 'messages']);
+        Route::post('conversations/{conversation}/messages', [ConversationsController::class, 'reply'])
+            ->middleware('throttle:30,1');
+        Route::post('ads/{ad}/messages', [AdMessagesController::class, 'store'])
+            ->middleware('throttle:15,1');
 
         // Publishing is gated on a confirmed address: an unverified account
         // must not be able to put contact details in front of visitors. Reading

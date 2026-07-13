@@ -62,6 +62,9 @@ final class AdSeeder extends Seeder
                     'password' => Hash::make('password'),
                     'avatar_path' => null,
                     'bio' => null,
+                    'phone' => $i % 2 === 0
+                        ? sprintf('+48 501 %03d %03d', $i % 1_000, ($i * 3) % 1_000)
+                        : null,
                     'is_admin' => false,
                 ],
             );
@@ -229,7 +232,7 @@ final class AdSeeder extends Seeder
      *     price: string|null,
      *     location: string,
      *     district: string|null,
-     *     contact_email: string,
+     *     contact_email: string|null,
      *     contact_phone: string|null,
      *     status: string,
      *     rejection_reason: null,
@@ -260,7 +263,7 @@ final class AdSeeder extends Seeder
             'price' => AdSeederProfile::price($rootSlug, $sequence),
             'location' => AdSeederProfile::location($sequence),
             'district' => AdSeederProfile::district($sequence),
-            'contact_email' => sprintf('sprzedawca-%06d@ogloszenia.local', $sequence),
+            'contact_email' => null,
             'contact_phone' => $sequence % 3 === 0 ? sprintf('+48 500 %03d %03d', $sequence % 1_000, ($sequence * 7) % 1_000) : null,
             'status' => 'active',
             'rejection_reason' => null,

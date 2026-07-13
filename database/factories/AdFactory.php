@@ -43,7 +43,7 @@ final class AdFactory extends Factory
                 fake()->numberBetween(1, 3),
             ),
             'location' => fake()->boolean(80) ? fake()->city() : null,
-            'contact_email' => fake()->safeEmail(),
+            'contact_email' => null,
             'contact_phone' => null,
             'status' => AdStatus::Active,
             'published_at' => now(),

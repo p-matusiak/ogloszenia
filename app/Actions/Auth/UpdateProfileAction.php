@@ -5,11 +5,14 @@ declare(strict_types=1);
 namespace App\Actions\Auth;
 
 use App\Models\User;
+use App\Repositories\Contracts\UserRepository;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 
 final class UpdateProfileAction
 {
+    public function __construct(private readonly UserRepository $users) {}
+
     /**
      * @param  array<string, mixed>  $data  Validated name, email and bio.
      */
@@ -22,13 +25,16 @@ final class UpdateProfileAction
         $newEmail = isset($data['email']) ? (string) $data['email'] : $user->email;
         $emailChanged = $newEmail !== $user->email;
 
-        $user->update($data + $this->avatarAttributes($user, $avatar, $removeAvatar));
+        $user = $this->users->updateAttributes(
+            $user,
+            $data + $this->avatarAttributes($user, $avatar, $removeAvatar),
+        );
 
         if ($emailChanged) {
             $this->requireVerificationOfNewAddress($user);
         }
 
-        return $user->refresh();
+        return $user;
     }
 
     /**
@@ -39,7 +45,7 @@ final class UpdateProfileAction
     {
         // email_verified_at is deliberately not fillable: only this path may
         // clear it, and only the signed activation link may set it.
-        $user->forceFill(['email_verified_at' => null])->save();
+        $this->users->clearEmailVerification($user);
 
         $user->sendEmailVerificationNotification();
     }

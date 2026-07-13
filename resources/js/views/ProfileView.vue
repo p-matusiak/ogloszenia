@@ -17,6 +17,7 @@ const { user } = storeToRefs(auth)
 
 const name = ref('')
 const email = ref('')
+const phone = ref('')
 const bio = ref('')
 const avatarFile = ref<File | null>(null)
 const removeAvatar = ref(false)
@@ -29,6 +30,7 @@ watch(
   (next) => {
     name.value = next?.name ?? ''
     email.value = next?.email ?? ''
+    phone.value = next?.phone ?? ''
     bio.value = next?.bio ?? ''
     if (avatarFile.value === null) {
       previewUrl.value = next?.avatar_url ?? null
@@ -73,6 +75,7 @@ async function onSubmit(): Promise<void> {
     await auth.updateProfile({
       name: name.value,
       email: email.value,
+      phone: phone.value,
       bio: bio.value,
       avatar: avatarFile.value,
       remove_avatar: removeAvatar.value,
@@ -233,6 +236,19 @@ async function onSubmit(): Promise<void> {
           >
             Zmiana adresu cofnie potwierdzenie konta. Na nowy adres wyślemy link aktywacyjny.
           </Message>
+        </label>
+
+        <label class="field">
+          <span class="field__label">Telefon</span>
+          <InputText
+            v-model="phone"
+            :invalid="Boolean(errors.phone)"
+          />
+          <small>Opcjonalny numer kontaktowy — domyślnie widoczny na Twoich ogłoszeniach.</small>
+          <small
+            v-if="errors.phone"
+            class="field__error"
+          >{{ errors.phone }}</small>
         </label>
 
         <label class="field">

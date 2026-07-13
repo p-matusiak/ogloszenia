@@ -46,4 +46,27 @@ final class EloquentAdRepository implements AdRepository
             ->paginate(Config::integer('ads.per_page'))
             ->withQueryString();
     }
+
+    /**
+     * @param  array<string, mixed>  $attributes
+     */
+    public function create(array $attributes): Ad
+    {
+        return Ad::query()->create($attributes);
+    }
+
+    public function save(Ad $ad): Ad
+    {
+        $ad->save();
+
+        return $ad->refresh();
+    }
+
+    public function countCreatedTodayForUser(int $userId): int
+    {
+        return Ad::query()
+            ->where('user_id', $userId)
+            ->where('created_at', '>=', now()->startOfDay())
+            ->count();
+    }
 }

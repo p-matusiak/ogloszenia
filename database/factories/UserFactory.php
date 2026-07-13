@@ -31,6 +31,7 @@ final class UserFactory extends Factory
             'password' => self::$password ??= Hash::make('password'),
             'avatar_path' => null,
             'bio' => null,
+            'phone' => null,
             'is_admin' => false,
             'remember_token' => Str::random(10),
         ];

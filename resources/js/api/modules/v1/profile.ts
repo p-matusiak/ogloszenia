@@ -6,6 +6,7 @@ const BASE = '/api/v1'
 export interface ProfilePayload {
   name: string
   email: string
+  phone: string
   bio: string
   avatar: File | null
   remove_avatar: boolean
@@ -17,6 +18,7 @@ export async function updateProfile(payload: ProfilePayload): Promise<User> {
   const form = new FormData()
   form.set('name', payload.name)
   form.set('email', payload.email)
+  form.set('phone', payload.phone)
   form.set('bio', payload.bio)
   form.set('remove_avatar', payload.remove_avatar ? '1' : '0')
 

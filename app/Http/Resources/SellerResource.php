@@ -23,6 +23,7 @@ final class SellerResource extends JsonResource
     {
         return [
             'name' => $this->name,
+            'avatar_url' => $this->avatarUrl(),
             'member_since' => $this->created_at?->year,
         ];
     }

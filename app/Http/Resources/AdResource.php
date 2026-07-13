@@ -33,16 +33,16 @@ final class AdResource extends JsonResource
             'district' => $this->district,
             'status' => $this->status->value,
             'rejection_reason' => $this->rejection_reason,
-            'contact_email' => $this->contact_email,
-
             // Pełny numer nigdy nie jedzie w payloadzie ogłoszenia — oddaje go
             // limitowany endpoint /ads/{ad}/phone. Wyjątkiem jest autor
-            // i administrator, którym numer jest potrzebny w formularzu edycji.
-            'has_phone' => $this->contact_phone !== null,
-            'contact_phone_masked' => (new PhoneMasker)->mask($this->contact_phone),
+            // i administrator, którym nadpisanie numeru jest potrzebne w edycji.
+            'has_phone' => $this->resolvedContactPhone() !== null,
+            'contact_phone_masked' => (new PhoneMasker)->mask($this->resolvedContactPhone()),
             'contact_phone' => $this->when($this->canManage($request), $this->contact_phone),
+            'uses_profile_phone' => $this->contact_phone === null && $this->resolvedContactPhone() !== null,
 
             'views_count' => $this->views_count,
+            'is_own' => $request->user()?->id === $this->user_id,
             'is_refreshable' => $this->isRefreshable(),
             'published_at' => $this->published_at?->toIso8601String(),
             'expires_at' => $this->expires_at?->toIso8601String(),

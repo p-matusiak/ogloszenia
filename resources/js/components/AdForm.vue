@@ -13,6 +13,7 @@ import DeliveryPicker from '@/components/form/DeliveryPicker.vue'
 import FormSection from '@/components/form/FormSection.vue'
 import ImageUploader from '@/components/form/ImageUploader.vue'
 import MoneyInput from '@/components/form/MoneyInput.vue'
+import { useAuthStore } from '@/stores/auth'
 import { useCategoryStore } from '@/stores/categories'
 import type { AdFormValues, AdImage } from '@/types/api'
 
@@ -36,7 +37,10 @@ const MAX_IMAGES = 12
 const MAX_IMAGE_MB = 10
 const MAX_DESCRIPTION = 10000
 
+const auth = useAuthStore()
 const categories = useCategoryStore()
+
+const profilePhone = computed(() => auth.user?.phone ?? null)
 
 const remainingCharacters = computed(() => MAX_DESCRIPTION - props.modelValue.description.length)
 
@@ -263,46 +267,57 @@ onMounted(() => void categories.load())
 
       <FormSection
         :step="6"
-        title="Dane kontaktowe"
+        title="Kontakt"
       >
-        <div class="grid grid--pair">
-          <div class="field">
-            <label for="contact_phone">Telefon</label>
-            <InputText
-              id="contact_phone"
-              :model-value="modelValue.contact_phone"
-              :invalid="Boolean(errors.contact_phone)"
-              @update:model-value="patch({ contact_phone: $event ?? '' })"
-            />
-            <small>Numer telefonu nie będzie widoczny publicznie.</small>
-            <Message
-              v-if="errors.contact_phone"
-              severity="error"
-              size="small"
-              variant="simple"
-            >
-              {{ errors.contact_phone }}
-            </Message>
-          </div>
+        <p class="contact-hint">
+          Kupujący mogą napisać do Ciebie wiadomością w serwisie. Numer telefonu jest opcjonalny
+          i nie jest widoczny publicznie — pojawia się dopiero po kliknięciu „Pokaż numer”.
+        </p>
 
-          <div class="field">
-            <label for="contact_email">E-mail</label>
-            <InputText
-              id="contact_email"
-              :model-value="modelValue.contact_email"
-              :invalid="Boolean(errors.contact_email)"
-              @update:model-value="patch({ contact_email: $event ?? '' })"
-            />
-            <small>Podaj telefon lub e-mail — przynajmniej jeden sposób kontaktu.</small>
-            <Message
-              v-if="errors.contact_email"
-              severity="error"
-              size="small"
-              variant="simple"
-            >
-              {{ errors.contact_email }}
-            </Message>
-          </div>
+        <p
+          v-if="profilePhone"
+          class="contact-profile"
+        >
+          <i class="pi pi-phone" />
+          Numer z profilu: <strong>{{ profilePhone }}</strong>
+        </p>
+        <p
+          v-else
+          class="contact-profile contact-profile--muted"
+        >
+          Nie masz numeru w profilu — możesz go dodać w ustawieniach konta albo podać tylko przy tym
+          ogłoszeniu.
+        </p>
+
+        <div class="field field--inline">
+          <Checkbox
+            input-id="use_custom_phone"
+            :model-value="modelValue.use_custom_phone"
+            binary
+            @update:model-value="patch({ use_custom_phone: $event, contact_phone: $event ? modelValue.contact_phone : '' })"
+          />
+          <label for="use_custom_phone">Chcę podać inny numer telefonu niż w profilu</label>
+        </div>
+
+        <div
+          v-if="modelValue.use_custom_phone"
+          class="field"
+        >
+          <label for="contact_phone">Numer przy tym ogłoszeniu</label>
+          <InputText
+            id="contact_phone"
+            :model-value="modelValue.contact_phone"
+            :invalid="Boolean(errors.contact_phone)"
+            @update:model-value="patch({ contact_phone: $event ?? '' })"
+          />
+          <Message
+            v-if="errors.contact_phone"
+            severity="error"
+            size="small"
+            variant="simple"
+          >
+            {{ errors.contact_phone }}
+          </Message>
         </div>
 
         <div class="field field--inline terms">
@@ -425,6 +440,25 @@ onMounted(() => void categories.load())
   .grid--pair .field--inline {
     padding-top: 1.6rem;
   }
+}
+
+.contact-hint {
+  margin: 0 0 0.75rem;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.contact-profile {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0 0 1rem;
+  font-size: 0.875rem;
+}
+
+.contact-profile--muted {
+  color: var(--text-muted);
 }
 
 .terms {

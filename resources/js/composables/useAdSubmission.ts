@@ -15,7 +15,7 @@ export function emptyAdForm(): AdFormValues {
     delivery_prices: {},
     location: '',
     district: '',
-    contact_email: '',
+    use_custom_phone: false,
     contact_phone: '',
     accept_terms: false,
     images: [],
@@ -35,8 +35,8 @@ export function adToForm(ad: Ad): AdFormValues {
     delivery_prices: { ...ad.delivery_prices },
     location: ad.location ?? '',
     district: ad.district ?? '',
-    contact_email: ad.contact_email ?? '',
-    // Pełny numer przychodzi tylko autorowi ogłoszenia; dla obcych jest pusty.
+    use_custom_phone: Boolean(ad.contact_phone),
+    // Pełny numer nadpisania przychodzi tylko autorowi; null znaczy „z profilu”.
     contact_phone: ad.contact_phone ?? '',
     // Already accepted when the ad was first published.
     accept_terms: true,

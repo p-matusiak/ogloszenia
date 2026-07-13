@@ -9,7 +9,9 @@ use App\Enums\SettingKey;
 use App\Exceptions\Domain\DailyAdLimitReachedException;
 use App\Models\Ad;
 use App\Models\User;
+use App\Repositories\Contracts\AdRepository;
 use App\Services\Contracts\SettingsRepository;
+use App\Support\AdContactAttributes;
 use App\Support\AdPublicationWindow;
 use App\Support\AdSlugGenerator;
 use Carbon\CarbonImmutable;
@@ -21,6 +23,7 @@ use Illuminate\Support\Facades\DB;
 final readonly class CreateAdAction
 {
     public function __construct(
+        private AdRepository $ads,
         private SettingsRepository $settings,
         private AdSlugGenerator $slugGenerator,
         private StoreAdImagesAction $storeImages,
@@ -41,7 +44,7 @@ final readonly class CreateAdAction
             $this->guardDailyLimit($user);
 
             return DB::transaction(function () use ($user, $data, $images): Ad {
-                $ad = Ad::query()->create($this->attributes($user, $data));
+                $ad = $this->ads->create($this->attributes($user, $data));
 
                 $this->storeImages->execute($ad, $images);
 
@@ -75,8 +78,8 @@ final readonly class CreateAdAction
             'delivery_prices' => $this->pricesForChosenMethods($data),
             'location' => $location,
             'district' => $data['district'] ?? null,
-            'contact_email' => $data['contact_email'] ?? null,
-            'contact_phone' => $data['contact_phone'] ?? null,
+            'contact_email' => null,
+            'contact_phone' => AdContactAttributes::overridePhone($data),
             'status' => $autoApprove ? AdStatus::Active : AdStatus::Pending,
             'terms_accepted_at' => CarbonImmutable::now(),
         ] + $window;
@@ -107,7 +110,7 @@ final readonly class CreateAdAction
     {
         $limit = Config::integer('ads.daily_limit_per_user');
 
-        $today = $user->ads()->where('created_at', '>=', now()->startOfDay())->count();
+        $today = $this->ads->countCreatedTodayForUser($user->id);
 
         if ($today >= $limit) {
             throw new DailyAdLimitReachedException($limit);

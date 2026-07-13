@@ -1,6 +1,7 @@
 import { createTestingPinia } from '@pinia/testing'
 import { mount } from '@vue/test-utils'
 import PrimeVue from 'primevue/config'
+import { setActivePinia } from 'pinia'
 import { ref } from 'vue'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -22,26 +23,35 @@ vi.mock('@/composables/useTheme', () => ({
   }),
 }))
 
-function mountHeader() {
+const baseUser = {
+  id: 1,
+  name: 'Jan Kowalski',
+  email: 'jan@example.com',
+  is_email_verified: true,
+  phone: null,
+}
+
+function mountHeader(options?: { isAdmin?: boolean; authenticated?: boolean }) {
+  const pinia = createTestingPinia({
+    createSpy: vi.fn,
+    stubActions: false,
+    initialState: {
+      auth: {
+        user: options?.authenticated
+          ? { ...baseUser, is_admin: options.isAdmin === true }
+          : null,
+        isResolved: true,
+      },
+    },
+  })
+  setActivePinia(pinia)
+
   return mount(AppHeader, {
     props: { filters: {} },
     global: {
-      plugins: [
-        PrimeVue,
-        createTestingPinia({
-          createSpy: vi.fn,
-          initialState: {
-            auth: {
-              user: null,
-              isLoading: false,
-              isResolved: true,
-            },
-          },
-          stubActions: false,
-        }),
-      ],
+      plugins: [PrimeVue, pinia],
       stubs: {
-        RouterLink: true,
+        RouterLink: { template: '<a><slot /></a>' },
       },
     },
   })
@@ -61,6 +71,24 @@ describe('AppHeader', () => {
     await wrapper.find('input[aria-label="Czego szukasz?"]').setValue('rower')
 
     expect(push).not.toHaveBeenCalled()
+  })
+
+  it('nie pokazuje panelu admina gościowi', () => {
+    const wrapper = mountHeader()
+
+    expect(wrapper.text()).not.toContain('Panel admina')
+  })
+
+  it('nie pokazuje panelu admina zwykłemu użytkownikowi', () => {
+    const wrapper = mountHeader({ authenticated: true, isAdmin: false })
+
+    expect(wrapper.text()).not.toContain('Panel admina')
+  })
+
+  it('pokazuje panel admina tylko administratorowi', () => {
+    const wrapper = mountHeader({ authenticated: true, isAdmin: true })
+
+    expect(wrapper.text()).toContain('Panel admina')
   })
 
   it('wyszukuje dopiero po submit formularza', async () => {

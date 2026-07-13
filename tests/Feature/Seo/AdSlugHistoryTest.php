@@ -18,7 +18,7 @@ function adEditPayload(Ad $ad, array $overrides = []): array
         'category_id' => $ad->category_id,
         'price' => 100,
         'location' => $ad->location,
-        'contact_email' => 'kontakt@example.com',
+
         'accept_terms' => true,
     ], $overrides);
 }

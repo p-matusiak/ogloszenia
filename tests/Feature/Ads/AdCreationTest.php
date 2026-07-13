@@ -53,13 +53,34 @@ it('refuses to file an ad directly under a top-level category', function (): voi
         ->assertJsonValidationErrors('category_id');
 });
 
-it('requires at least one way to contact the seller', function (): void {
-    $payload = validAdPayload(leafCategory(), ['contact_email' => null, 'contact_phone' => null]);
+it('allows creating an ad without any phone number', function (): void {
+    $this->actingAs(User::factory()->create(['phone' => null]))
+        ->postJson('/api/v1/ads', validAdPayload(leafCategory()))
+        ->assertCreated()
+        ->assertJsonPath('data.has_phone', false);
+});
+
+it('requires a phone when the custom-phone option is enabled', function (): void {
+    $payload = validAdPayload(leafCategory(), [
+        'use_custom_phone' => true,
+        'contact_phone' => '',
+    ]);
 
     $this->actingAs(User::factory()->create())
         ->postJson('/api/v1/ads', $payload)
         ->assertUnprocessable()
-        ->assertJsonValidationErrors(['contact_email', 'contact_phone']);
+        ->assertJsonValidationErrors('contact_phone');
+});
+
+it('exposes the profile phone on the public ad when no override is set', function (): void {
+    $user = User::factory()->create(['phone' => '+48 500 111 222']);
+
+    $this->actingAs($user)
+        ->postJson('/api/v1/ads', validAdPayload(leafCategory()))
+        ->assertCreated()
+        ->assertJsonPath('data.has_phone', true)
+        ->assertJsonPath('data.uses_profile_phone', true)
+        ->assertJsonPath('data.contact_phone_masked', '+48 500 ••• •••');
 });
 
 it('requires the terms to be accepted', function (): void {

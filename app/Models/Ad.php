@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Query\Builder as QueryBuilder;
@@ -103,6 +104,16 @@ final class Ad extends Model
     public function primaryImage(): HasOne
     {
         return $this->hasOne(AdImage::class)->where('position', AdImage::PRIMARY_POSITION);
+    }
+
+    /**
+     * Użytkownicy obserwujący (lubiący) to ogłoszenie.
+     *
+     * @return BelongsToMany<User, $this>
+     */
+    public function favoritedByUsers(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'ad_favorites')->withTimestamps();
     }
 
     /**
@@ -206,6 +217,22 @@ final class Ad extends Model
                 ->join('categories', 'categories.id', '=', 'closure.ancestor_id')
                 ->where('categories.slug', $slug);
         });
+    }
+
+    /**
+     * Numer widoczny na ogłoszeniu: nadpisanie z formularza albo telefon z profilu.
+     */
+    public function resolvedContactPhone(): ?string
+    {
+        if ($this->contact_phone !== null && $this->contact_phone !== '') {
+            return $this->contact_phone;
+        }
+
+        if (! $this->relationLoaded('user')) {
+            return null;
+        }
+
+        return $this->user->phone;
     }
 
     /**

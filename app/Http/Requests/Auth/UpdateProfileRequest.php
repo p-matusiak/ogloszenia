@@ -14,6 +14,13 @@ final class UpdateProfileRequest extends FormRequest
         return $this->user() !== null;
     }
 
+    protected function prepareForValidation(): void
+    {
+        if ($this->input('phone') === '') {
+            $this->merge(['phone' => null]);
+        }
+    }
+
     /**
      * @return array<string, mixed>
      */
@@ -28,6 +35,7 @@ final class UpdateProfileRequest extends FormRequest
                 Rule::unique('users', 'email')->ignore($this->user()?->id),
             ],
             'bio' => ['nullable', 'string', 'max:1200'],
+            'phone' => ['nullable', 'string', 'max:32'],
             'avatar' => ['nullable', 'image', 'max:2048'],
             'remove_avatar' => ['nullable', 'boolean'],
         ];

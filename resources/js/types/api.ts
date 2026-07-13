@@ -19,6 +19,7 @@ export interface User {
   avatar_url: string | null
   is_admin: boolean
   is_email_verified: boolean
+  phone: string | null
 }
 
 /** Mirrors App\Enums\EmailVerificationStatus; arrives as the `?status=` query. */
@@ -79,12 +80,13 @@ export interface Ad {
   district: string | null
   status: AdStatus
   rejection_reason: string | null
-  contact_email: string | null
-  /** Pełny numer widzi tylko autor i administrator (formularz edycji). */
+  /** Nadpisanie numeru z profilu — widzi tylko autor i administrator. */
   contact_phone?: string
+  uses_profile_phone?: boolean
   has_phone: boolean
   contact_phone_masked: string | null
   views_count: number
+  is_own: boolean
   is_refreshable: boolean
   published_at: string | null
   expires_at: string | null
@@ -114,6 +116,19 @@ export interface PaginationMeta {
 export interface Paginated<T> {
   data: T[]
   meta: PaginationMeta
+}
+
+/** Laravel cursor paginator meta — brak total i last_page. */
+export interface CursorPaginationMeta {
+  path: string
+  per_page: number
+  next_cursor: string | null
+  prev_cursor: string | null
+}
+
+export interface CursorPaginated<T> {
+  data: T[]
+  meta: CursorPaginationMeta
 }
 
 export interface ResourceEnvelope<T> {
@@ -165,7 +180,39 @@ export interface AdFilters {
 /** SellerResource: publiczna wizytówka, bez adresu e-mail. */
 export interface Seller {
   name: string
+  avatar_url: string | null
   member_since: number | null
+}
+
+/** MessageParticipantResource: publiczna wizytówka uczestnika wątku. */
+export interface MessageParticipant {
+  id: number
+  name: string
+}
+
+export interface Message {
+  id: number
+  body: string
+  created_at: string | null
+  is_mine: boolean
+  sender?: MessageParticipant
+}
+
+export interface ConversationSummary {
+  id: number
+  ad?: AdSummary
+  other_party?: MessageParticipant
+  last_message_preview: string | null
+  last_message_at: string | null
+  is_unread: boolean
+}
+
+export interface Conversation {
+  id: number
+  ad?: AdSummary
+  other_party?: MessageParticipant
+  last_message_at: string | null
+  is_unread: boolean
 }
 
 export interface AdFormValues {
@@ -179,7 +226,7 @@ export interface AdFormValues {
   delivery_prices: Partial<Record<DeliveryMethod, string>>
   location: string
   district: string
-  contact_email: string
+  use_custom_phone: boolean
   contact_phone: string
   accept_terms: boolean
   images: File[]

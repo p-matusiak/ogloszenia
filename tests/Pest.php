@@ -46,7 +46,6 @@ function validAdPayload(Category $leaf, array $overrides = []): array
         'category_id' => $leaf->id,
         'price' => 1999.99,
         'location' => 'Warszawa',
-        'contact_email' => 'sprzedawca@example.com',
         'accept_terms' => true,
     ], $overrides);
 }

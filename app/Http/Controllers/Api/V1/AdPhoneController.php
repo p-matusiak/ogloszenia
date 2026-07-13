@@ -20,7 +20,10 @@ final class AdPhoneController extends Controller
     {
         $this->authorize('view', $ad);
 
-        if ($ad->contact_phone === null) {
+        $ad->loadMissing('user');
+        $phone = $ad->resolvedContactPhone();
+
+        if ($phone === null) {
             return response()->json([
                 'code' => 'AD_HAS_NO_PHONE',
                 'message' => 'To ogłoszenie nie ma numeru telefonu.',
@@ -30,6 +33,6 @@ final class AdPhoneController extends Controller
 
         $recordReveal->execute($ad);
 
-        return response()->json(['phone' => $ad->contact_phone]);
+        return response()->json(['phone' => $phone]);
     }
 }

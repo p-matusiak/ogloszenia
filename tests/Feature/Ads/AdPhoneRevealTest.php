@@ -20,13 +20,34 @@ it('never puts the raw phone number in the public ad payload', function (): void
         ->assertJsonMissingPath('data.contact_phone');
 });
 
-it('reports no phone when the seller left only an email', function (): void {
-    $ad = Ad::factory()->create(['contact_phone' => null, 'contact_email' => 'jan@example.com']);
+it('reports no phone when neither the ad nor the profile has one', function (): void {
+    $ad = Ad::factory()->create(['contact_phone' => null]);
+    $ad->user->update(['phone' => null]);
 
     $this->getJson("/api/v1/ads/{$ad->slug}")
         ->assertOk()
         ->assertJsonPath('data.has_phone', false)
         ->assertJsonPath('data.contact_phone_masked', null);
+});
+
+it('masks the profile phone when the ad does not override it', function (): void {
+    $ad = Ad::factory()->create(['contact_phone' => null]);
+    $ad->user->update(['phone' => '+48 600 123 456']);
+
+    $this->getJson("/api/v1/ads/{$ad->slug}")
+        ->assertOk()
+        ->assertJsonPath('data.has_phone', true)
+        ->assertJsonPath('data.uses_profile_phone', true)
+        ->assertJsonPath('data.contact_phone_masked', '+48 600 ••• •••');
+});
+
+it('reveals the profile phone when the ad has no override', function (): void {
+    $ad = Ad::factory()->create(['contact_phone' => null]);
+    $ad->user->update(['phone' => '+48 600 123 456']);
+
+    $this->postJson("/api/v1/ads/{$ad->slug}/phone")
+        ->assertOk()
+        ->assertJsonPath('phone', '+48 600 123 456');
 });
 
 it('hands out the full number only on an explicit request', function (): void {
@@ -47,7 +68,8 @@ it('counts every reveal', function (): void {
 });
 
 it('answers 404 when the ad carries no phone number', function (): void {
-    $ad = Ad::factory()->create(['contact_phone' => null, 'contact_email' => 'jan@example.com']);
+    $ad = Ad::factory()->create(['contact_phone' => null]);
+    $ad->user->update(['phone' => null]);
 
     $this->postJson("/api/v1/ads/{$ad->slug}/phone")
         ->assertNotFound()

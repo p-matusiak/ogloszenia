@@ -4,20 +4,29 @@ import IconField from 'primevue/iconfield'
 import InputIcon from 'primevue/inputicon'
 import InputText from 'primevue/inputtext'
 import { storeToRefs } from 'pinia'
-import { ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
 import { pruneFilters } from '@/composables/useRouteFilters'
 import { useTheme } from '@/composables/useTheme'
 import { useAuthStore } from '@/stores/auth'
+import { useConversationsStore } from '@/stores/conversations'
+import { useFavoritesStore } from '@/stores/favorites'
 import type { AdFilters } from '@/types/api'
 
 const props = defineProps<{ filters: AdFilters }>()
 
 const router = useRouter()
 const auth = useAuthStore()
-const { isAdmin, isAuthenticated, user } = storeToRefs(auth)
+const favorites = useFavoritesStore()
+const conversations = useConversationsStore()
+const { isAuthenticated, isResolved, user } = storeToRefs(auth)
 const { isDark, toggle } = useTheme()
+
+/** Panel admina tylko po ustaleniu sesji i wyłącznie dla kont z `is_admin`. */
+const showAdminPanel = computed(
+  () => isResolved.value && user.value?.is_admin === true,
+)
 
 const query = ref(props.filters.q ?? '')
 const location = ref(props.filters.location ?? '')
@@ -64,8 +73,24 @@ async function search(): Promise<void> {
   await pushSearch(query.value, location.value)
 }
 
+onMounted(() => {
+  if (auth.isAuthenticated) {
+    void conversations.refreshUnreadCount()
+  }
+})
+
+watch(isAuthenticated, (loggedIn) => {
+  if (loggedIn) {
+    void conversations.refreshUnreadCount()
+  } else {
+    conversations.reset()
+  }
+})
+
 async function logout(): Promise<void> {
   await auth.logout()
+  favorites.reset()
+  conversations.reset()
   await router.push({ name: 'home' }).catch(() => undefined)
 }
 </script>
@@ -144,6 +169,38 @@ async function logout(): Promise<void> {
 
         <RouterLink
           v-if="isAuthenticated"
+          :to="{ name: 'favorites' }"
+        >
+          <Button
+            icon="pi pi-heart"
+            aria-label="Ulubione ogłoszenia"
+            severity="secondary"
+            text
+            rounded
+          />
+        </RouterLink>
+
+        <RouterLink
+          v-if="isAuthenticated"
+          :to="{ name: 'messages' }"
+        >
+          <Button
+            icon="pi pi-comments"
+            :aria-label="
+              conversations.unreadCount > 0
+                ? `Wiadomości (${conversations.unreadCount} nieprzeczytanych)`
+                : 'Wiadomości'
+            "
+            severity="secondary"
+            text
+            rounded
+            :badge="conversations.unreadCount > 0 ? String(conversations.unreadCount) : undefined"
+            badge-severity="danger"
+          />
+        </RouterLink>
+
+        <RouterLink
+          v-if="isAuthenticated"
           :to="{ name: 'profile' }"
           class="actions__profile-link"
         >
@@ -151,7 +208,7 @@ async function logout(): Promise<void> {
         </RouterLink>
 
         <RouterLink
-          v-if="isAdmin"
+          v-if="showAdminPanel"
           :to="{ name: 'admin' }"
         >
           <Button

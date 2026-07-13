@@ -72,8 +72,8 @@ class StoreAdRequest extends FormRequest
             'delivery_prices' => ['array'],
             'delivery_prices.*' => ['nullable', 'numeric', 'min:0', 'max:9999.99'],
 
-            'contact_email' => ['nullable', 'required_without:contact_phone', 'email', 'max:255'],
-            'contact_phone' => ['nullable', 'required_without:contact_email', 'string', 'max:32'],
+            'use_custom_phone' => ['nullable', 'boolean'],
+            'contact_phone' => ['nullable', 'required_if:use_custom_phone,true', 'string', 'max:32'],
 
             'accept_terms' => ['accepted'],
 

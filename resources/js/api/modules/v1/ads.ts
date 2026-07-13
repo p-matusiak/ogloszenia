@@ -87,8 +87,10 @@ function toFormData(values: AdFormValues): FormData {
   appendOptional(form, 'condition', values.condition ?? '')
   appendOptional(form, 'location', values.location)
   appendOptional(form, 'district', values.district)
-  appendOptional(form, 'contact_email', values.contact_email)
-  appendOptional(form, 'contact_phone', values.contact_phone)
+  form.append('use_custom_phone', values.use_custom_phone ? '1' : '0')
+  if (values.use_custom_phone) {
+    appendOptional(form, 'contact_phone', values.contact_phone)
+  }
 
   values.delivery_methods.forEach((method) => form.append('delivery_methods[]', method))
 

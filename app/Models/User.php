@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -25,12 +26,14 @@ use Illuminate\Support\Facades\Storage;
  * @property string $password
  * @property string|null $avatar_path
  * @property string|null $bio
+ * @property string|null $phone
  * @property bool $is_admin
  * @property Carbon|null $email_verified_at
  * @property Carbon|null $created_at
  * @property-read Collection<int, Ad> $ads
+ * @property-read Collection<int, Ad> $favoriteAds
  */
-#[Fillable(['name', 'email', 'password', 'avatar_path', 'bio'])]
+#[Fillable(['name', 'email', 'password', 'avatar_path', 'bio', 'phone'])]
 #[Hidden(['password', 'remember_token'])]
 final class User extends Authenticatable implements MustVerifyEmail
 {
@@ -43,6 +46,16 @@ final class User extends Authenticatable implements MustVerifyEmail
     public function ads(): HasMany
     {
         return $this->hasMany(Ad::class);
+    }
+
+    /**
+     * Ogłoszenia obserwowane (ulubione) przez użytkownika.
+     *
+     * @return BelongsToMany<Ad, $this>
+     */
+    public function favoriteAds(): BelongsToMany
+    {
+        return $this->belongsToMany(Ad::class, 'ad_favorites')->withTimestamps();
     }
 
     /**

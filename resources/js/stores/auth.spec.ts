@@ -27,6 +27,7 @@ function makeUser(overrides: Partial<User> = {}): User {
     avatar_url: null,
     is_admin: false,
     is_email_verified: true,
+    phone: null,
     ...overrides,
   }
 }

@@ -89,7 +89,7 @@ final class AuthController extends Controller
 
         return new UserResource($this->updateProfile->execute(
             user: $user,
-            data: $request->safe()->only(['name', 'email', 'bio']),
+            data: $request->safe()->only(['name', 'email', 'phone', 'bio']),
             avatar: $avatar instanceof UploadedFile ? $avatar : null,
             removeAvatar: $request->boolean('remove_avatar'),
         ));

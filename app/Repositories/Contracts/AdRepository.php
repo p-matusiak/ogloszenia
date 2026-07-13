@@ -19,4 +19,13 @@ interface AdRepository
      * @return LengthAwarePaginator<int, Ad>
      */
     public function paginateForModeration(array $filters): LengthAwarePaginator;
+
+    /**
+     * @param  array<string, mixed>  $attributes
+     */
+    public function create(array $attributes): Ad;
+
+    public function save(Ad $ad): Ad;
+
+    public function countCreatedTodayForUser(int $userId): int;
 }

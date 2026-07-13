@@ -7,21 +7,27 @@ import { computed, onMounted, ref } from 'vue'
 import { errorMessage } from '@/api/client'
 import { fetchAd } from '@/api/modules/v1/ads'
 import AdReportPanel from '@/components/AdReportPanel.vue'
+import SendMessagePanel from '@/components/messages/SendMessagePanel.vue'
 import AdDetailSkeleton from '@/components/ads/AdDetailSkeleton.vue'
+import FavoriteButton from '@/components/ads/FavoriteButton.vue'
 import AdGallery from '@/components/ads/AdGallery.vue'
 import AdMetaPanel from '@/components/ads/AdMetaPanel.vue'
 import SellerCard from '@/components/ads/SellerCard.vue'
 import { formatPrice } from '@/composables/useFormatting'
 import { locationLabel } from '@/composables/useOfferLabels'
 import { setDocumentTitle } from '@/composables/usePageTitle'
+import { useAuthStore } from '@/stores/auth'
 import type { Ad, Category } from '@/types/api'
 
 const props = defineProps<{ slug: string }>()
+
+const auth = useAuthStore()
 
 const ad = ref<Ad | null>(null)
 const isLoading = ref(true)
 const loadError = ref<string | null>(null)
 const isReportOpen = ref(false)
+const isMessageOpen = ref(false)
 const isDescriptionExpanded = ref(false)
 
 const DESCRIPTION_CLAMP = 320
@@ -37,6 +43,17 @@ const breadcrumb = computed<Category[]>(() => {
 })
 
 const isDescriptionLong = computed(() => (ad.value?.description.length ?? 0) > DESCRIPTION_CLAMP)
+
+/** Serduszko pokazujemy na aktywnym ogłoszeniu; gość po kliknięciu trafia na logowanie. */
+const showFavorite = computed(() => ad.value?.status === 'active')
+
+/** Napisać do sprzedającego można tylko na aktywnym, cudzym ogłoszeniu. */
+const canMessage = computed(
+  () =>
+    auth.isAuthenticated &&
+    ad.value?.status === 'active' &&
+    ad.value.is_own === false,
+)
 
 onMounted(async () => {
   try {
@@ -95,9 +112,16 @@ onMounted(async () => {
             {{ ad.title }}
           </h1>
 
-          <p class="detail__price">
-            {{ formatPrice(ad.price) }}
-          </p>
+          <div class="detail__headline">
+            <p class="detail__price">
+              {{ formatPrice(ad.price) }}
+            </p>
+            <FavoriteButton
+              v-if="showFavorite"
+              :ad-id="ad.id"
+              :ad-slug="ad.slug"
+            />
+          </div>
 
           <p
             v-if="ad.location"
@@ -130,9 +154,10 @@ onMounted(async () => {
         <SellerCard
           :slug="slug"
           :seller="ad.seller"
-          :contact-email="ad.contact_email"
           :has-phone="ad.has_phone"
           :masked-phone="ad.contact_phone_masked"
+          :can-message="canMessage"
+          @message="isMessageOpen = true"
         />
 
         <AdMetaPanel
@@ -153,6 +178,18 @@ onMounted(async () => {
       <AdReportPanel
         :slug="slug"
         @sent="isReportOpen = false"
+      />
+    </Dialog>
+
+    <Dialog
+      v-model:visible="isMessageOpen"
+      header="Wyślij wiadomość"
+      modal
+      :style="{ width: 'min(28rem, 92vw)' }"
+    >
+      <SendMessagePanel
+        :slug="slug"
+        @sent="isMessageOpen = false"
       />
     </Dialog>
   </article>
@@ -210,6 +247,13 @@ onMounted(async () => {
   margin: 0 0 0.5rem;
   font-size: clamp(1.35rem, 1rem + 1.4vw, 1.85rem);
   line-height: 1.25;
+}
+
+.detail__headline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
 }
 
 .detail__price {

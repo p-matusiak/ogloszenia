@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Models\Ad;
+use Illuminate\Support\Facades\Storage;
 
 it('sorts by newest publication by default', function (): void {
     Ad::factory()->create(['title' => 'Starsze', 'published_at' => now()->subDays(3)]);
@@ -81,6 +82,19 @@ it('exposes the seller name and joining year, never their email', function (): v
     $this->getJson("/api/v1/ads/{$ad->slug}")
         ->assertOk()
         ->assertJsonPath('data.seller.name', 'Jan Kowalski')
+        ->assertJsonPath('data.seller.avatar_url', null)
         ->assertJsonPath('data.seller.member_since', $ad->user->created_at?->year)
         ->assertJsonMissingPath('data.seller.email');
+});
+
+it('exposes the seller avatar url when they uploaded a photo', function (): void {
+    Storage::fake('public');
+    Storage::disk('public')->put('avatars/jan.jpg', 'avatar');
+
+    $ad = Ad::factory()->create();
+    $ad->user->update(['avatar_path' => 'avatars/jan.jpg']);
+
+    $this->getJson("/api/v1/ads/{$ad->slug}")
+        ->assertOk()
+        ->assertJsonPath('data.seller.avatar_url', fn (string $url): bool => str_contains($url, '/storage/avatars/jan.jpg'));
 });

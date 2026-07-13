@@ -8,6 +8,21 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 
+it('stores an optional phone number on the profile', function (): void {
+    $user = User::factory()->create(['phone' => null]);
+
+    $this->actingAs($user)
+        ->postJson('/api/v1/auth/profile', [
+            'name' => $user->name,
+            'email' => $user->email,
+            'phone' => '+48 500 100 200',
+        ])
+        ->assertOk()
+        ->assertJsonPath('data.phone', '+48 500 100 200');
+
+    expect($user->refresh()->phone)->toBe('+48 500 100 200');
+});
+
 it('updates the basic profile data of the authenticated user', function (): void {
     $user = User::factory()->create([
         'name' => 'Jan',

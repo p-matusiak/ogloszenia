@@ -1,7 +1,8 @@
 <script setup lang="ts">
+import Avatar from 'primevue/avatar'
 import Button from 'primevue/button'
 import { useToast } from 'primevue/usetoast'
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 
 import { errorMessage } from '@/api/client'
 import { revealPhone } from '@/api/modules/v1/ads'
@@ -10,23 +11,26 @@ import type { Seller } from '@/types/api'
 const props = defineProps<{
   slug: string
   seller?: Seller
-  contactEmail: string | null
   hasPhone: boolean
   maskedPhone: string | null
+  canMessage?: boolean
 }>()
+
+const emit = defineEmits<{ message: [] }>()
 
 const toast = useToast()
 const revealedPhone = ref<string | null>(null)
 const isRevealing = ref(false)
 
-/** Inicjały zamiast zdjęcia: konta nie mają avatarów. */
-function initials(name: string): string {
+const sellerInitials = computed(() => {
+  const name = props.seller?.name ?? ''
   return name
     .split(/\s+/)
+    .filter(Boolean)
     .slice(0, 2)
     .map((part) => part.charAt(0).toUpperCase())
     .join('')
-}
+})
 
 /**
  * Numer przychodzi dopiero teraz, osobnym limitowanym żądaniem — dzięki temu
@@ -54,12 +58,21 @@ async function showPhone(): Promise<void> {
       v-if="props.seller"
       class="seller__identity"
     >
-      <div
+      <Avatar
+        v-if="props.seller.avatar_url"
+        :image="props.seller.avatar_url"
+        :alt="`Avatar ${props.seller.name}`"
+        shape="circle"
+        size="large"
         class="seller__avatar"
-        aria-hidden="true"
-      >
-        {{ initials(props.seller.name) }}
-      </div>
+      />
+      <Avatar
+        v-else
+        :label="sellerInitials"
+        shape="circle"
+        size="large"
+        class="seller__avatar seller__avatar--fallback"
+      />
       <div>
         <p class="seller__name">
           {{ props.seller.name }}
@@ -96,19 +109,13 @@ async function showPhone(): Promise<void> {
       />
     </template>
 
-    <a
-      v-if="contactEmail"
-      :href="`mailto:${contactEmail}`"
-      class="seller__link"
-    >
-      <Button
-        icon="pi pi-envelope"
-        label="Napisz e-mail"
-        severity="secondary"
-        outlined
-        fluid
-      />
-    </a>
+    <Button
+      v-if="canMessage"
+      icon="pi pi-comments"
+      label="Wyślij wiadomość"
+      fluid
+      @click="emit('message')"
+    />
   </div>
 </template>
 
@@ -133,12 +140,10 @@ async function showPhone(): Promise<void> {
 }
 
 .seller__avatar {
-  display: grid;
-  place-items: center;
-  width: 3rem;
-  height: 3rem;
   flex-shrink: 0;
-  border-radius: 50%;
+}
+
+.seller__avatar--fallback {
   background: color-mix(in srgb, var(--p-primary-color) 15%, transparent);
   color: var(--p-primary-color);
   font-weight: 700;

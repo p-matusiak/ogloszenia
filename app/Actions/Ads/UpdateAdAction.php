@@ -6,8 +6,11 @@ namespace App\Actions\Ads;
 
 use App\Enums\AdStatus;
 use App\Enums\SettingKey;
+use App\Events\AdWasUpdated;
 use App\Models\Ad;
+use App\Repositories\Contracts\AdRepository;
 use App\Services\Contracts\SettingsRepository;
+use App\Support\AdContactAttributes;
 use App\Support\AdPublicationWindow;
 use App\Support\AdSlugGenerator;
 use Illuminate\Http\UploadedFile;
@@ -16,6 +19,7 @@ use Illuminate\Support\Facades\DB;
 final readonly class UpdateAdAction
 {
     public function __construct(
+        private AdRepository $ads,
         private SettingsRepository $settings,
         private AdSlugGenerator $slugGenerator,
         private AdImageSynchroniser $images,
@@ -23,19 +27,31 @@ final readonly class UpdateAdAction
     ) {}
 
     /**
+     * Zmiana tych pól jest istotna dla obserwujących ogłoszenie — wyzwala
+     * powiadomienie e-mail o aktualizacji.
+     *
+     * @var list<string>
+     */
+    private const array NOTIFIABLE_ATTRIBUTES = ['title', 'description', 'price'];
+
+    /**
      * @param  array<string, mixed>  $data
      * @param  list<UploadedFile>  $newImages
      */
     public function execute(Ad $ad, array $data, array $newImages = []): Ad
     {
-        return DB::transaction(function () use ($ad, $data, $newImages): Ad {
+        $changed = [];
+
+        $updated = DB::transaction(function () use ($ad, $data, $newImages, &$changed): Ad {
             /** @var list<int> $removedImageIds */
             $removedImageIds = $data['removed_image_ids'] ?? [];
 
             $previousSlug = $ad->slug;
 
             $ad->fill($this->attributes($ad, $data));
-            $ad->save();
+            $this->ads->save($ad);
+
+            $changed = $this->changedNotifiableAttributes($ad);
 
             $this->archivePreviousSlug($ad, $previousSlug);
 
@@ -43,6 +59,36 @@ final readonly class UpdateAdAction
 
             return $ad->refresh();
         });
+
+        $this->announceChange($updated, $changed);
+
+        return $updated;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function changedNotifiableAttributes(Ad $ad): array
+    {
+        return array_values(
+            array_intersect(self::NOTIFIABLE_ATTRIBUTES, array_keys($ad->getChanges())),
+        );
+    }
+
+    /**
+     * Obserwujący widzą tylko aktywne ogłoszenia, więc tylko taka zmiana ma
+     * odbiorców. Event leci po commicie — kolejkowany listener nie może odczytać
+     * jeszcze niezapisanego stanu.
+     *
+     * @param  list<string>  $changed
+     */
+    private function announceChange(Ad $ad, array $changed): void
+    {
+        if ($changed === [] || ! $ad->isPubliclyVisible()) {
+            return;
+        }
+
+        event(new AdWasUpdated($ad, $changed));
     }
 
     /**
@@ -80,8 +126,8 @@ final readonly class UpdateAdAction
             'delivery_prices' => $this->pricesForChosenMethods($data),
             'location' => $location,
             'district' => $data['district'] ?? null,
-            'contact_email' => $data['contact_email'] ?? null,
-            'contact_phone' => $data['contact_phone'] ?? null,
+            'contact_email' => null,
+            'contact_phone' => AdContactAttributes::overridePhone($data),
         ];
 
         if ($ad->title !== $title || $ad->location !== $location) {
