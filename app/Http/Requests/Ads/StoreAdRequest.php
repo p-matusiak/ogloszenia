@@ -1,0 +1,137 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Http\Requests\Ads;
+
+use App\Enums\AdCondition;
+use App\Enums\DeliveryMethod;
+use App\Models\Category;
+use App\Models\User;
+use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Config;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
+
+class StoreAdRequest extends FormRequest
+{
+    public function authorize(): bool
+    {
+        return $this->user() !== null;
+    }
+
+    /**
+     * Guaranteed non-null by authorize().
+     */
+    public function author(): User
+    {
+        $user = $this->user();
+
+        assert($user instanceof User);
+
+        return $user;
+    }
+
+    /**
+     * @return list<UploadedFile>
+     */
+    public function images(): array
+    {
+        $files = $this->file('images', []);
+
+        return is_array($files) ? array_values($files) : [];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function rules(): array
+    {
+        $images = Config::array('ads.images');
+
+        return [
+            'title' => ['required', 'string', 'min:5', 'max:150'],
+            'description' => ['required', 'string', 'min:20', 'max:10000'],
+
+            // The leaf node, e.g. "Samochody". Its ancestors come from the
+            // closure table, so the parent category is never posted.
+            'category_id' => ['required', 'integer', 'exists:categories,id'],
+
+            'price' => ['nullable', 'numeric', 'min:0', 'max:99999999.99'],
+            'is_negotiable' => ['nullable', 'boolean'],
+            'condition' => ['nullable', Rule::enum(AdCondition::class)],
+
+            'location' => ['nullable', 'string', 'max:120'],
+            'district' => ['nullable', 'string', 'max:80'],
+
+            'delivery_methods' => ['array'],
+            'delivery_methods.*' => [Rule::enum(DeliveryMethod::class)],
+
+            // Mapa metoda → cena. Klucz spoza wybranych metod nie ma sensu.
+            'delivery_prices' => ['array'],
+            'delivery_prices.*' => ['nullable', 'numeric', 'min:0', 'max:9999.99'],
+
+            'contact_email' => ['nullable', 'required_without:contact_phone', 'email', 'max:255'],
+            'contact_phone' => ['nullable', 'required_without:contact_email', 'string', 'max:32'],
+
+            'accept_terms' => ['accepted'],
+
+            'images' => ['array', 'max:'.$images['max_per_ad']],
+            'images.*' => ['image', 'mimes:'.implode(',', $images['mimes']), 'max:'.$images['max_size_kb']],
+        ];
+    }
+
+    /**
+     * @return list<callable(Validator): void>
+     */
+    protected function after(): array
+    {
+        return [
+            fn (Validator $validator) => $this->validateCategoryIsLeaf($validator),
+            fn (Validator $validator) => $this->validateDeliveryPriceKeys($validator),
+        ];
+    }
+
+    /**
+     * Ads belong at the bottom of the tree. Filing one directly under
+     * "Motoryzacja" would make it invisible to every subcategory filter.
+     */
+    private function validateCategoryIsLeaf(Validator $validator): void
+    {
+        if ($validator->errors()->isNotEmpty()) {
+            return;
+        }
+
+        $category = Category::query()->find($this->integer('category_id'));
+
+        if ($category === null) {
+            return;
+        }
+
+        if ($category->children()->exists()) {
+            $validator->errors()->add('category_id', 'Choose a subcategory, not a top-level category.');
+        }
+    }
+
+    /**
+     * Cena dostawy metodą, której autor nie zaznaczył, byłaby martwym rekordem.
+     */
+    private function validateDeliveryPriceKeys(Validator $validator): void
+    {
+        /** @var array<string, mixed> $prices */
+        $prices = $this->input('delivery_prices', []);
+
+        /** @var list<string> $methods */
+        $methods = $this->input('delivery_methods', []);
+
+        foreach (array_keys($prices) as $method) {
+            if (! in_array($method, $methods, true)) {
+                $validator->errors()->add(
+                    "delivery_prices.{$method}",
+                    'Cena dotyczy metody dostawy, która nie została wybrana.',
+                );
+            }
+        }
+    }
+}

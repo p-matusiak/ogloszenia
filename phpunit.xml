@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+         bootstrap="vendor/autoload.php"
+         colors="true"
+>
+    <testsuites>
+        <testsuite name="Unit">
+            <directory>tests/Unit</directory>
+        </testsuite>
+        <testsuite name="Feature">
+            <directory>tests/Feature</directory>
+        </testsuite>
+    </testsuites>
+    <source>
+        <include>
+            <directory>app</directory>
+        </include>
+    </source>
+    <php>
+        <env name="APP_ENV" value="testing"/>
+        <!-- Adresy kanoniczne (canonical, sitemap, RSS) budują się z APP_URL,
+             a nie z hosta żądania. Testy jadą po "localhost", więc obie ścieżki
+             muszą dawać ten sam URL. -->
+        <env name="APP_URL" value="http://localhost"/>
+        <env name="APP_MAINTENANCE_DRIVER" value="file"/>
+        <env name="BCRYPT_ROUNDS" value="4"/>
+        <env name="BROADCAST_CONNECTION" value="null"/>
+        <env name="CACHE_STORE" value="array"/>
+        <!-- Postgres, not SQLite: the schema relies on jsonb, tsvector and GIN
+             indexes, none of which SQLite can express. -->
+        <env name="DB_CONNECTION" value="pgsql"/>
+        <env name="DB_HOST" value="postgres"/>
+        <env name="DB_PORT" value="5432"/>
+        <env name="DB_DATABASE" value="ogloszenia_test"/>
+        <env name="DB_USERNAME" value="ogloszenia"/>
+        <env name="DB_PASSWORD" value="secret"/>
+        <env name="DB_URL" value=""/>
+        <env name="MAIL_MAILER" value="array"/>
+        <env name="QUEUE_CONNECTION" value="sync"/>
+        <env name="SESSION_DRIVER" value="array"/>
+        <!-- Test requests target bare "localhost", which must count as a
+             stateful domain or Sanctum never starts a session for the SPA. -->
+        <env name="SANCTUM_STATEFUL_DOMAINS" value="localhost"/>
+        <!-- Celowo z nadmiarowymi spacjami: sprawdza przycinanie w config/proxies.php.
+             Przypięte tutaj, bo .env może zawężać listę do jednego adresu proxy. -->
+        <env name="TRUSTED_PROXIES" value="10.0.0.0/8, 172.16.0.0/12 ,192.168.0.0/16"/>
+        <env name="PULSE_ENABLED" value="false"/>
+        <env name="TELESCOPE_ENABLED" value="false"/>
+        <env name="NIGHTWATCH_ENABLED" value="false"/>
+    </php>
+</phpunit>

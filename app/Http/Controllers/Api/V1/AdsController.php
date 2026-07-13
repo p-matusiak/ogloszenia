@@ -1,0 +1,71 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Http\Controllers\Api\V1;
+
+use App\Actions\Ads\CreateAdAction;
+use App\Actions\Ads\DeleteAdAction;
+use App\Actions\Ads\RecordAdViewAction;
+use App\Actions\Ads\UpdateAdAction;
+use App\Http\Controllers\Controller;
+use App\Http\Requests\Ads\IndexAdRequest;
+use App\Http\Requests\Ads\StoreAdRequest;
+use App\Http\Requests\Ads\UpdateAdRequest;
+use App\Http\Resources\AdResource;
+use App\Http\Resources\AdSummaryResource;
+use App\Models\Ad;
+use App\Search\Contracts\AdSearchEngine;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Symfony\Component\HttpFoundation\Response;
+
+final class AdsController extends Controller
+{
+    public function index(IndexAdRequest $request, AdSearchEngine $search): AnonymousResourceCollection
+    {
+        return AdSummaryResource::collection($search->search($request->filters()));
+    }
+
+    public function show(Ad $ad, RecordAdViewAction $recordView): AdResource
+    {
+        $this->authorize('view', $ad);
+
+        $recordView->execute($ad);
+
+        return new AdResource($ad->load(['category.ancestors', 'images', 'user']));
+    }
+
+    public function store(StoreAdRequest $request, CreateAdAction $createAd): JsonResponse
+    {
+        $ad = $createAd->execute(
+            user: $request->author(),
+            data: $request->safe()->except('images'),
+            images: $request->images(),
+        );
+
+        return (new AdResource($ad->load(['category.ancestors', 'images', 'user'])))
+            ->response()
+            ->setStatusCode(Response::HTTP_CREATED);
+    }
+
+    public function update(UpdateAdRequest $request, Ad $ad, UpdateAdAction $updateAd): AdResource
+    {
+        $updated = $updateAd->execute(
+            ad: $ad,
+            data: $request->safe()->except('images'),
+            newImages: $request->images(),
+        );
+
+        return new AdResource($updated->load(['category.ancestors', 'images', 'user']));
+    }
+
+    public function destroy(Ad $ad, DeleteAdAction $deleteAd): Response
+    {
+        $this->authorize('delete', $ad);
+
+        $deleteAd->execute($ad);
+
+        return response()->noContent();
+    }
+}

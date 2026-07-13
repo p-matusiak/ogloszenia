@@ -1,0 +1,100 @@
+@import 'tailwindcss';
+
+/* PrimeVue jest skonfigurowany na darkModeSelector '.dark' (resources/js/app.ts).
+   Tailwind 4 domyślnie wiąże wariant `dark:` z prefers-color-scheme, więc bez
+   tego oba systemy rozjechałyby się przy ręcznym przełączniku motywu. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@layer base {
+  :root {
+    --surface-page: #eef1f6;
+    --surface-card: #ffffff;
+    --surface-muted: #f4f6f9;
+    --surface-border: #dde2ea;
+    --text-strong: #0f1419;
+    --text-muted: #5f6b7a;
+    --shell-max: 1400px;
+
+    --card-padding: 1.25rem;
+    --card-radius: 0.875rem;
+    --stack-gap: 1.25rem;
+    --title-card: 1.0625rem;
+
+    --shadow-card-hover: 0 10px 28px rgb(15 20 25 / 8%);
+    --header-height: 3.75rem;
+
+    --tone-success: #16a34a;
+    --tone-success-text: #15803d;
+    --tone-info: #2563eb;
+  }
+
+  .dark {
+    --surface-page: #0b0e13;
+    --surface-card: #151a22;
+    --surface-muted: #1b212b;
+    --surface-border: #2a313d;
+    --text-strong: #f2f5f9;
+    --text-muted: #9aa3b2;
+    --shadow-card-hover: 0 12px 32px rgb(0 0 0 / 35%);
+    --tone-success-text: #4ade80;
+    --tone-info: #60a5fa;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  /* Większość widoków renderuje nagi <h1>. Bez tego każdy dostaje domyślne 2em
+     przeglądarki i własny margines, więc tytuły stron nie są równe. */
+  h1 {
+    margin: 0 0 1.25rem;
+    font-size: 1.65rem;
+    font-weight: 700;
+    line-height: 1.25;
+  }
+
+  body {
+    margin: 0;
+    background: var(--surface-page);
+    color: var(--text-strong);
+    font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--p-primary-color);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+/* Jedna definicja „białej karty na szarym tle”. Każdy panel, sidebar i kafelek
+   korzysta z tej klasy zamiast powtarzać tło, obramowanie i promień. */
+@utility surface {
+  background: var(--surface-card);
+  border: 1px solid var(--surface-border);
+  border-radius: var(--card-radius);
+}
+
+@utility shell {
+  width: min(var(--shell-max), 100%);
+  margin-inline: auto;
+  padding-inline: 1rem;
+}
+
+@utility clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
