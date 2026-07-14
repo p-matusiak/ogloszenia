@@ -56,6 +56,17 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  async function deleteAccount(): Promise<void> {
+    isLoading.value = true
+    try {
+      await profileApi.deleteAccount()
+      user.value = null
+      isResolved.value = true
+    } finally {
+      isLoading.value = false
+    }
+  }
+
   async function resendVerification(): Promise<void> {
     isLoading.value = true
     try {
@@ -100,6 +111,7 @@ export const useAuthStore = defineStore('auth', () => {
     login,
     logout,
     updateProfile,
+    deleteAccount,
     resendVerification,
     resolve,
     refresh,

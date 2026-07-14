@@ -16,12 +16,12 @@ export const OPERATOR = {
   regon: '380242220',
 
   // TODO: uzupełnić przed publikacją.
-  email: 'kontakt@example.pl',
+  email: 'kontakt@zunto.pl',
 } as const
 
 export const SITE = {
-  name: 'Ogłoszenia',
-  domain: 'ogloszenia.gesoft.pl',
+  name: 'Zunto',
+  domain: 'zunto.pl',
 } as const
 
 /**

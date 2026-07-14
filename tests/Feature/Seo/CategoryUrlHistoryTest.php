@@ -72,5 +72,5 @@ it('keeps the remaining filters and prefers the deeper node when redirecting', f
 });
 
 it('leaves an ordinary listing url alone', function (): void {
-    $this->get('/?q=rower')->assertOk();
+    $this->get('/ogloszenia?q=rower')->assertOk();
 });

@@ -53,6 +53,7 @@ defineProps<{ title: string; subtitle?: string }>()
   font-size: 1.375rem;
   font-weight: 700;
   line-height: 1.25;
+  color: var(--brand-blue);
 }
 
 .auth__subtitle {
@@ -65,6 +66,16 @@ defineProps<{ title: string; subtitle?: string }>()
   text-align: center;
   font-size: 0.875rem;
   color: var(--text-muted);
+}
+
+.auth__footer :deep(a) {
+  color: var(--brand-blue);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.auth__footer :deep(a:hover) {
+  color: var(--brand-orange);
 }
 
 /* Pola formularza przychodzą slotem, więc ich metryki muszą stać tutaj.

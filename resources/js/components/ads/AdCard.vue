@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import AdBadge from '@/components/ads/AdBadge.vue'
+import DeliveryMethodIcons from '@/components/ads/DeliveryMethodIcons.vue'
 import { formatAddedAt, formatPrice } from '@/composables/useFormatting'
-import { deliverySummary, locationLabel } from '@/composables/useOfferLabels'
+import { locationLabel } from '@/composables/useOfferLabels'
 import type { AdSummary } from '@/types/api'
 
 defineProps<{ ad: AdSummary }>()
@@ -50,18 +51,14 @@ defineProps<{ ad: AdSummary }>()
         data-testid="location"
         class="card__meta"
       >
-        <i class="pi pi-map-marker" />{{ locationLabel(ad.location, ad.district) }}
+        <i class="pi pi-map-marker" />{{ locationLabel(ad.location) }}
       </p>
 
-      <p
+      <DeliveryMethodIcons
         v-if="ad.delivery_methods.length > 0"
-        class="card__meta"
-      >
-        <AdBadge
-          :label="deliverySummary(ad.delivery_methods)"
-          tone="success"
-        />
-      </p>
+        :methods="ad.delivery_methods"
+        class="card__delivery"
+      />
 
       <p class="card__added">
         {{ formatAddedAt(ad.published_at) }}
@@ -75,6 +72,8 @@ defineProps<{ ad: AdSummary }>()
   display: flex;
   flex-direction: column;
   height: 100%;
+  min-width: 0;
+  max-width: 100%;
   text-decoration: none;
   color: inherit;
   border: 1px solid var(--surface-border);
@@ -88,8 +87,12 @@ defineProps<{ ad: AdSummary }>()
 }
 
 .card:hover {
-  border-color: color-mix(in srgb, var(--p-primary-color) 45%, transparent);
+  border-color: color-mix(in srgb, var(--brand-orange) 55%, transparent);
   box-shadow: var(--shadow-card-hover);
+}
+
+.card:hover .card__title {
+  color: var(--brand-blue);
 }
 
 .card__media {
@@ -128,6 +131,7 @@ defineProps<{ ad: AdSummary }>()
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  transition: color 0.15s ease;
 }
 
 .card__pricing {
@@ -141,6 +145,7 @@ defineProps<{ ad: AdSummary }>()
 .card__price {
   font-size: 1.125rem;
   font-weight: 700;
+  color: var(--text-strong);
 }
 
 .card__meta {
@@ -150,6 +155,10 @@ defineProps<{ ad: AdSummary }>()
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
+}
+
+.card__delivery {
+  margin-top: -0.125rem;
 }
 
 .card__added {

@@ -30,7 +30,8 @@ final class AdResource extends JsonResource
             'delivery_methods' => $this->delivery_methods,
             'delivery_prices' => (object) $this->delivery_prices,
             'location' => $this->location,
-            'district' => $this->district,
+            'latitude' => $this->latitude === null ? null : (float) $this->latitude,
+            'longitude' => $this->longitude === null ? null : (float) $this->longitude,
             'status' => $this->status->value,
             'rejection_reason' => $this->rejection_reason,
             // Pełny numer nigdy nie jedzie w payloadzie ogłoszenia — oddaje go

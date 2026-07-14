@@ -1,7 +1,7 @@
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
 <channel>
     <title>{{ $title }}</title>
-    <link>{{ $siteUrl->route('home') }}</link>
+    <link>{{ $siteUrl->route('landing') }}</link>
     <description>{{ config('seo.default_description') }}</description>
     <language>pl-pl</language>
     <lastBuildDate>{{ $lastBuildDate }}</lastBuildDate>

@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 
 import { errorMessage } from '@/api/client'
 import { fetchAds } from '@/api/modules/v1/ads'
+import { i18n } from '@/i18n/index'
 import type { AdFilters, AdSummary, PaginationMeta } from '@/types/api'
 
 export const useAdsStore = defineStore('ads', () => {
@@ -39,7 +40,7 @@ export const useAdsStore = defineStore('ads', () => {
         return
       }
 
-      error.value = errorMessage(caught, 'Nie udało się pobrać ogłoszeń.')
+      error.value = errorMessage(caught, i18n.global.t('errors.adsFetch'))
       ads.value = []
       meta.value = null
     } finally {

@@ -6,6 +6,7 @@ namespace App\Services\Seo;
 
 use App\Models\Ad;
 use App\Models\Category;
+use App\Models\User;
 use App\Support\Seo\SiteUrl;
 use Generator;
 use Illuminate\Support\Facades\Config;
@@ -59,6 +60,24 @@ final readonly class SitemapUrlProvider
                 $this->siteUrl->route('categories.show', ['slug' => $category->slug]),
                 $category->updated_at?->toAtomString(),
                 self::CHANGEFREQ_DAILY,
+            ))
+            ->all();
+    }
+
+    /**
+     * @return list<array<string, string|null>>
+     */
+    public function sellers(): array
+    {
+        return User::query()
+            ->whereHas('activeAds')
+            ->select(['id', 'slug', 'updated_at'])
+            ->orderBy('id')
+            ->get()
+            ->map(fn (User $seller): array => $this->entry(
+                $this->siteUrl->route('sellers.show', ['slug' => $seller->slug]),
+                $seller->updated_at?->toAtomString(),
+                self::CHANGEFREQ_WEEKLY,
             ))
             ->all();
     }

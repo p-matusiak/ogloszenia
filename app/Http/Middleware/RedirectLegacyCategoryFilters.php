@@ -26,7 +26,7 @@ final class RedirectLegacyCategoryFilters
     {
         $slug = $this->deepestSlug($request);
 
-        if ($slug === null || ! $request->routeIs('home')) {
+        if ($slug === null || ! $request->routeIs('landing', 'listings')) {
             return $next($request);
         }
 

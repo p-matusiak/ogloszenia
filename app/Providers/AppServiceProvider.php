@@ -13,6 +13,7 @@ use Illuminate\Http\Middleware\TrustProxies;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 
@@ -26,6 +27,7 @@ final class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->configureTrustedProxies();
+        $this->configureUrlsBehindProxy();
         $this->configureEloquentStrictness();
         $this->configureSeoDefaults();
     }
@@ -67,6 +69,21 @@ final class AppServiceProvider extends ServiceProvider
             | Request::HEADER_X_FORWARDED_PORT
             | Request::HEADER_X_FORWARDED_PROTO
         );
+    }
+
+    /**
+     * Za reverse proxy Socialite musi generować callback z https, gdy użytkownik
+     * wchodzi przez HTTPS — inaczej Google i Facebook odrzucą redirect_uri.
+     */
+    private function configureUrlsBehindProxy(): void
+    {
+        if ($this->app->runningInConsole()) {
+            return;
+        }
+
+        if (request()->secure()) {
+            URL::forceScheme('https');
+        }
     }
 
     private function configureEloquentStrictness(): void

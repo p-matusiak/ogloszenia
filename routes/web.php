@@ -5,6 +5,8 @@ declare(strict_types=1);
 use App\Http\Controllers\AdPageController;
 use App\Http\Controllers\CategoryPageController;
 use App\Http\Controllers\EmailVerificationController;
+use App\Http\Controllers\OAuthController;
+use App\Http\Controllers\SellerPageController;
 use App\Http\Controllers\Seo\AdFeedController;
 use App\Http\Controllers\Seo\RobotsController;
 use App\Http\Controllers\Seo\SitemapController;
@@ -14,6 +16,16 @@ use Illuminate\Support\Facades\Route;
 
 // `signed` rejects a tampered or expired link; the throttle stops someone
 // brute-forcing the email hash of a known user id.
+Route::get('/auth/{provider}/redirect', [OAuthController::class, 'redirect'])
+    ->whereIn('provider', ['google', 'facebook'])
+    ->middleware('throttle:10,1')
+    ->name('oauth.redirect');
+
+Route::get('/auth/{provider}/callback', [OAuthController::class, 'callback'])
+    ->whereIn('provider', ['google', 'facebook'])
+    ->middleware('throttle:10,1')
+    ->name('oauth.callback');
+
 Route::get('/email/weryfikacja/{id}/{hash}', EmailVerificationController::class)
     ->middleware(['signed', 'throttle:6,1'])
     ->name('verification.verify');
@@ -38,6 +50,10 @@ Route::get('/ogloszenie/{slug}', AdPageController::class)->name('ads.show');
 Route::get('/kategoria/{slug}', CategoryPageController::class)
     ->where('slug', '[a-z0-9-]+')
     ->name('categories.show');
+
+Route::get('/sprzedawca/{slug}', SellerPageController::class)
+    ->where('slug', '[a-z0-9-]+')
+    ->name('sellers.show');
 
 /**
  * Pozostałe trasy powłoki SPA. Wyliczone, a nie złapane catch-allem: wcześniej

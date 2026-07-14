@@ -2,12 +2,14 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\Api\V1\AdCategorySuggestionController;
 use App\Http\Controllers\Api\V1\AdMessagesController;
 use App\Http\Controllers\Api\V1\Admin\AdModerationController;
 use App\Http\Controllers\Api\V1\Admin\AdReportsController as AdminAdReportsController;
 use App\Http\Controllers\Api\V1\Admin\AdsController as AdminAdsController;
 use App\Http\Controllers\Api\V1\Admin\CategoriesController as AdminCategoriesController;
 use App\Http\Controllers\Api\V1\Admin\SettingsController;
+use App\Http\Controllers\Api\V1\AdMoreFromSellerController;
 use App\Http\Controllers\Api\V1\AdPhoneController;
 use App\Http\Controllers\Api\V1\AdRefreshController;
 use App\Http\Controllers\Api\V1\AdReportsController;
@@ -18,14 +20,19 @@ use App\Http\Controllers\Api\V1\ConversationsController;
 use App\Http\Controllers\Api\V1\EmailVerificationNotificationController;
 use App\Http\Controllers\Api\V1\FavoritesController;
 use App\Http\Controllers\Api\V1\MyAdsController;
+use App\Http\Controllers\Api\V1\OAuthProvidersController;
 use App\Http\Controllers\Api\V1\PasswordResetController;
+use App\Http\Controllers\Api\V1\SellersController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function (): void {
     Route::get('categories', CategoriesController::class);
 
     Route::get('ads', [AdsController::class, 'index']);
+    Route::get('ads/{ad}/more-from-seller', AdMoreFromSellerController::class);
     Route::get('ads/{ad}', [AdsController::class, 'show']);
+    Route::get('sellers/{seller}', [SellersController::class, 'show'])
+        ->where('seller', '[a-z0-9-]+');
 
     // Guests may report ads, so this sits outside the auth group. Throttled
     // tightly: it is the only write endpoint an anonymous visitor can reach.
@@ -34,6 +41,8 @@ Route::prefix('v1')->group(function (): void {
     // Pełny numer telefonu wyłącznie na jawne żądanie i pod ostrym limitem —
     // inaczej jedno przejście po liście oddałoby scraperowi wszystkie numery.
     Route::post('ads/{ad}/phone', AdPhoneController::class)->middleware('throttle:15,60');
+
+    Route::get('auth/oauth-providers', OAuthProvidersController::class);
 
     Route::middleware('guest')->group(function (): void {
         Route::post('auth/register', [AuthController::class, 'register'])->middleware('throttle:5,60');
@@ -46,6 +55,7 @@ Route::prefix('v1')->group(function (): void {
         Route::post('auth/logout', [AuthController::class, 'logout']);
         Route::get('auth/me', [AuthController::class, 'me']);
         Route::post('auth/profile', [AuthController::class, 'updateProfile']);
+        Route::delete('auth/account', [AuthController::class, 'deleteAccount']);
 
         // Throttled per user: resending is the only way to make the app send
         // mail on demand, so it is the obvious lever for an outbound spam relay.
@@ -76,6 +86,8 @@ Route::prefix('v1')->group(function (): void {
         // must not be able to put contact details in front of visitors. Reading
         // and deleting stay open, so nobody is locked out of their own data.
         Route::middleware('verified')->group(function (): void {
+            Route::post('ads/suggest-category', AdCategorySuggestionController::class)
+                ->middleware('throttle:30,1');
             Route::post('ads', [AdsController::class, 'store']);
             // POST rather than PUT: the edit form is multipart, and browsers cannot
             // send multipart bodies with PUT without method spoofing.

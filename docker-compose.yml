@@ -1,14 +1,14 @@
 # Nazwa projektu, nazwy kontenerów, porty hosta i dane bazy pochodzą z .env.
 # Wartości po ":-" to zapasowe wartości domyślne, gdy .env jeszcze nie istnieje.
-name: ${COMPOSE_PROJECT_NAME:-ogloszenia}
+name: ${COMPOSE_PROJECT_NAME:-zunto}
 
 services:
   php:
     build:
       context: .
       dockerfile: docker/php/Dockerfile
-    image: ${COMPOSE_PROJECT_NAME:-ogloszenia}-php
-    container_name: ${PHP_CONTAINER_NAME:-ogloszenia-php}
+    image: ${COMPOSE_PROJECT_NAME:-zunto}-php
+    container_name: ${PHP_CONTAINER_NAME:-zunto-php}
     volumes:
       - .:/var/www/html
     depends_on:
@@ -19,7 +19,7 @@ services:
 
   nginx:
     image: nginx:1.27-alpine
-    container_name: ${NGINX_CONTAINER_NAME:-ogloszenia-nginx}
+    container_name: ${NGINX_CONTAINER_NAME:-zunto-nginx}
     ports:
       - "${APP_PORT:-8090}:80"
     volumes:
@@ -29,8 +29,8 @@ services:
       - php
 
   postgres:
-    image: postgres:16-alpine
-    container_name: ${POSTGRES_CONTAINER_NAME:-ogloszenia-postgres}
+    image: postgis/postgis:16-3.4
+    container_name: ${POSTGRES_CONTAINER_NAME:-zunto-postgres}
     # Domyślne 64 MB /dev/shm wywraca równoległy VACUUM i CREATE INDEX na tabeli
     # ads: "could not resize shared memory segment ... No space left on device".
     shm_size: ${POSTGRES_SHM_SIZE:-256mb}
@@ -49,25 +49,25 @@ services:
       - -c
       - maintenance_work_mem=${POSTGRES_MAINTENANCE_WORK_MEM:-512MB}
     environment:
-      POSTGRES_DB: ${DB_DATABASE:-ogloszenia}
-      POSTGRES_USER: ${DB_USERNAME:-ogloszenia}
+      POSTGRES_DB: ${DB_DATABASE:-zunto}
+      POSTGRES_USER: ${DB_USERNAME:-zunto}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-secret}
       # Czytane przez skrypt inicjalizacyjny poniżej.
-      POSTGRES_TEST_DB: ${DB_TEST_DATABASE:-ogloszenia_test}
+      POSTGRES_TEST_DB: ${DB_TEST_DATABASE:-zunto_test}
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./docker/postgres/init-test-db.sh:/docker-entrypoint-initdb.d/10-init-test-db.sh:ro
     ports:
       - "127.0.0.1:${DB_FORWARD_PORT:-5434}:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-ogloszenia} -d ${DB_DATABASE:-ogloszenia}"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-zunto} -d ${DB_DATABASE:-zunto}"]
       interval: 3s
       timeout: 3s
       retries: 20
 
   redis:
     image: redis:7-alpine
-    container_name: ${REDIS_CONTAINER_NAME:-ogloszenia-redis}
+    container_name: ${REDIS_CONTAINER_NAME:-zunto-redis}
     command: ["redis-server", "--appendonly", "yes"]
     volumes:
       - redisdata:/data
@@ -81,8 +81,8 @@ services:
     build:
       context: .
       dockerfile: docker/php/Dockerfile
-    image: ${COMPOSE_PROJECT_NAME:-ogloszenia}-php
-    container_name: ${WORKER_CONTAINER_NAME:-ogloszenia-worker}
+    image: ${COMPOSE_PROJECT_NAME:-zunto}-php
+    container_name: ${WORKER_CONTAINER_NAME:-zunto-worker}
     command: ["php", "artisan", "queue:work", "--queue=notifications,default", "--tries=3", "--backoff=5", "--max-time=3600"]
     restart: unless-stopped
     volumes:
@@ -94,8 +94,8 @@ services:
     build:
       context: .
       dockerfile: docker/php/Dockerfile
-    image: ${COMPOSE_PROJECT_NAME:-ogloszenia}-php
-    container_name: ${SCHEDULER_CONTAINER_NAME:-ogloszenia-scheduler}
+    image: ${COMPOSE_PROJECT_NAME:-zunto}-php
+    container_name: ${SCHEDULER_CONTAINER_NAME:-zunto-scheduler}
     command: ["php", "artisan", "schedule:work"]
     restart: unless-stopped
     volumes:
@@ -105,7 +105,7 @@ services:
 
   node:
     image: node:20-alpine
-    container_name: ${NODE_CONTAINER_NAME:-ogloszenia-node}
+    container_name: ${NODE_CONTAINER_NAME:-zunto-node}
     working_dir: /var/www/html
     user: "1000:1000"
     command: ["npm", "run", "dev", "--", "--host", "0.0.0.0"]

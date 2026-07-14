@@ -1,6 +1,6 @@
 import { computed, readonly, ref, type ComputedRef, type Ref } from 'vue'
 
-const STORAGE_KEY = 'ogloszenia:theme'
+const STORAGE_KEY = 'zunto:theme'
 const DARK_CLASS = 'dark'
 
 type Theme = 'light' | 'dark'

@@ -128,10 +128,19 @@ function goBack(): void {
         />
 
         <Avatar
-          :label="participantInitials(activeConversation.other_party?.name ?? '?')"
+          v-if="activeConversation.other_party?.avatar_url"
+          :image="activeConversation.other_party.avatar_url"
+          :alt="activeConversation.other_party.name"
           shape="circle"
           size="large"
           class="chat-card__avatar"
+        />
+        <Avatar
+          v-else
+          :label="participantInitials(activeConversation.other_party?.name ?? '?')"
+          shape="circle"
+          size="large"
+          class="chat-card__avatar chat-card__avatar--fallback"
         />
 
         <div class="chat-card__identity">
@@ -167,6 +176,7 @@ function goBack(): void {
           <ConversationThread
             :messages="messages"
             :other-party-name="activeConversation.other_party?.name ?? ''"
+            :other-party-avatar-url="activeConversation.other_party?.avatar_url ?? null"
           />
         </div>
       </ScrollPanel>
@@ -211,6 +221,9 @@ function goBack(): void {
 
 .chat-card__avatar {
   flex-shrink: 0;
+}
+
+.chat-card__avatar--fallback {
   background: color-mix(in srgb, var(--p-primary-color) 14%, transparent);
   color: var(--p-primary-color);
   font-weight: 700;

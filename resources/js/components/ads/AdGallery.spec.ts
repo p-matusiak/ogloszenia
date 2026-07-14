@@ -1,8 +1,10 @@
-import { mount } from '@vue/test-utils'
-import { describe, expect, it } from 'vitest'
+import { type VueWrapper, mount } from '@vue/test-utils'
+import { afterEach, describe, expect, it } from 'vitest'
 
 import AdGallery from '@/components/ads/AdGallery.vue'
 import type { AdImage } from '@/types/api'
+
+const mountedWrappers: VueWrapper[] = []
 
 function images(count: number): AdImage[] {
   return Array.from({ length: count }, (_, i) => ({
@@ -14,11 +16,36 @@ function images(count: number): AdImage[] {
 }
 
 function mountGallery(list: AdImage[]) {
-  return mount(AdGallery, {
+  const wrapper = mount(AdGallery, {
     props: { images: list, title: 'iPhone 13' },
-    global: { stubs: { Button: { template: '<button><slot /></button>' } } },
+    attachTo: document.body,
+    global: {
+      stubs: {
+        Button: { template: '<button v-bind="$attrs"><slot /></button>' },
+      },
+    },
   })
+  mountedWrappers.push(wrapper)
+
+  return wrapper
 }
+
+function clickInBody(selector: string): void {
+  const element = document.body.querySelector(selector)
+  if (!(element instanceof HTMLElement)) {
+    throw new Error(`Missing element: ${selector}`)
+  }
+
+  element.click()
+}
+
+afterEach(() => {
+  for (const wrapper of mountedWrappers.splice(0)) {
+    wrapper.unmount()
+  }
+
+  document.body.style.overflow = ''
+})
 
 describe('AdGallery', () => {
   it('shows a placeholder and no counter when there are no photos', () => {
@@ -54,5 +81,50 @@ describe('AdGallery', () => {
     await wrapper.find('.gallery__nav--prev').trigger('click')
 
     expect(wrapper.text()).toContain('3 / 3')
+  })
+
+  it('opens a fullscreen gallery when the main photo is clicked', async () => {
+    const wrapper = mountGallery(images(2))
+
+    await wrapper.find('[data-testid="gallery-image-trigger"]').trigger('click')
+
+    const lightbox = document.body.querySelector('[data-testid="gallery-lightbox"]')
+    expect(lightbox).not.toBeNull()
+    expect(lightbox?.querySelector('[data-testid="gallery-lightbox-image"]')?.getAttribute('src'))
+      .toBe('https://example.test/1.jpg')
+    expect(document.body.style.overflow).toBe('hidden')
+  })
+
+  it('closes the fullscreen gallery from the close button', async () => {
+    const wrapper = mountGallery(images(2))
+
+    await wrapper.find('[data-testid="gallery-image-trigger"]').trigger('click')
+    clickInBody('[data-testid="gallery-lightbox-close"]')
+    await wrapper.vm.$nextTick()
+
+    expect(document.body.querySelector('[data-testid="gallery-lightbox"]')).toBeNull()
+    expect(document.body.style.overflow).toBe('')
+  })
+
+  it('closes the fullscreen gallery on Escape', async () => {
+    const wrapper = mountGallery(images(2))
+
+    await wrapper.find('[data-testid="gallery-image-trigger"]').trigger('click')
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+    await wrapper.vm.$nextTick()
+
+    expect(document.body.querySelector('[data-testid="gallery-lightbox"]')).toBeNull()
+  })
+
+  it('navigates photos inside the fullscreen gallery', async () => {
+    const wrapper = mountGallery(images(3))
+
+    await wrapper.find('[data-testid="gallery-image-trigger"]').trigger('click')
+    clickInBody('[data-testid="gallery-lightbox-next"]')
+    await wrapper.vm.$nextTick()
+
+    const lightboxImage = document.body.querySelector('[data-testid="gallery-lightbox-image"]')
+    expect(lightboxImage?.getAttribute('src')).toBe('https://example.test/2.jpg')
+    expect(wrapper.text()).toContain('2 / 3')
   })
 })

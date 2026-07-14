@@ -6,7 +6,7 @@ Poniższy tekst wklej jako zadanie dla AI.
 
 ## Kontekst
 
-Pracujesz w istniejącym repozytorium `/var/www/ogloszenia_dev` — serwis ogłoszeń
+Pracujesz w istniejącym repozytorium `/var/www/ogloszenia_dev` — serwis **Zunto** (`zunto.pl`)
 drobnych. Backend (Laravel 13) jest **gotowy, przetestowany i nietykalny**.
 Twoje zadanie dotyczy wyłącznie warstwy prezentacji.
 
@@ -20,8 +20,8 @@ docker compose run --rm node npm run build      # Vite
 ```
 
 Aplikacja jest podniesiona pod `http://localhost:8090` oraz
-`http://ogloszenia.gesoft.pl`. Konto testowe: `jan@example.com` /
-`sekretne-haslo-123`. Admin: `admin@ogloszenia.local` / `password`.
+`https://zunto.pl`. Konto testowe: `jan@example.com` /
+`sekretne-haslo-123`. Admin: `admin@zunto.local` / `password`.
 
 ## Cel
 

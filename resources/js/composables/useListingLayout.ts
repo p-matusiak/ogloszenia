@@ -2,7 +2,7 @@ import { ref } from 'vue'
 
 export type ListingLayout = 'grid' | 'list'
 
-const STORAGE_KEY = 'ogloszenia:listing-layout'
+const STORAGE_KEY = 'zunto:listing-layout'
 
 function readStored(): ListingLayout {
   if (typeof localStorage === 'undefined') {

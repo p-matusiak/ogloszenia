@@ -4,6 +4,9 @@ import IconField from 'primevue/iconfield'
 import InputIcon from 'primevue/inputicon'
 import InputText from 'primevue/inputtext'
 import { ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 const props = defineProps<{
   query: string
@@ -39,31 +42,36 @@ function submit(): void {
     role="search"
     @submit.prevent="submit"
   >
-    <IconField class="search__field">
-      <InputIcon class="pi pi-search" />
-      <InputText
-        :model-value="draft"
-        placeholder="Czego szukasz?"
-        aria-label="Czego szukasz?"
-        fluid
-        @update:model-value="onInput"
+    <div class="search__capsule search-capsule">
+      <IconField class="search-capsule__field">
+        <InputIcon class="pi pi-search search-capsule__icon" />
+        <InputText
+          :model-value="draft"
+          :placeholder="t('nav.searchPlaceholder')"
+          :aria-label="t('nav.searchPlaceholder')"
+          unstyled
+          class="search-capsule__input"
+          @update:model-value="onInput"
+        />
+      </IconField>
+
+      <Button
+        type="submit"
+        :label="t('nav.searchSubmit')"
+        icon="pi pi-search"
+        class="search__submit search-capsule__submit"
       />
-    </IconField>
+    </div>
 
     <Button
       v-if="showFiltersButton"
       type="button"
       icon="pi pi-sliders-h"
-      aria-label="Filtry"
+      :aria-label="t('filters.openAria')"
       severity="secondary"
       outlined
+      class="search__filters"
       @click="emit('openFilters')"
-    />
-
-    <Button
-      type="submit"
-      label="Szukaj"
-      class="search__submit"
     />
   </form>
 </template>
@@ -75,9 +83,13 @@ function submit(): void {
   gap: 0.5rem;
 }
 
-.search__field {
+.search__capsule {
   flex: 1;
   min-width: 0;
+}
+
+.search__filters {
+  flex-shrink: 0;
 }
 
 .search__submit :deep(.p-button-label) {
@@ -87,6 +99,10 @@ function submit(): void {
 @media (width >= 30rem) {
   .search__submit :deep(.p-button-label) {
     display: inline;
+  }
+
+  .search__submit :deep(.p-button-icon) {
+    display: none;
   }
 }
 </style>

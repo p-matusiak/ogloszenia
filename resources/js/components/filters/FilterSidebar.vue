@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import Button from 'primevue/button'
 import Checkbox from 'primevue/checkbox'
-import InputText from 'primevue/inputtext'
-import { computed, reactive, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 import CategoryTreeFilter from '@/components/filters/CategoryTreeFilter.vue'
 import CheckboxGroupFilter from '@/components/filters/CheckboxGroupFilter.vue'
 import PriceRangeFilter from '@/components/filters/PriceRangeFilter.vue'
+import LocationSearchField, { type LocationSelection } from '@/components/search/LocationSearchField.vue'
+import { buildLocationFilters } from '@/composables/useListingGeoFilters'
 import {
   CONDITION_ORDER,
   DELIVERY_ORDER,
@@ -17,11 +19,19 @@ import {
 } from '@/composables/useOfferLabels'
 import type { AdCondition, AdFilters, DeliveryMethod } from '@/types/api'
 
-const props = defineProps<{
-  filters: AdFilters
-  hasActiveFilters: boolean
-  resultCount: number | null
-}>()
+const { t } = useI18n()
+
+const props = withDefaults(
+  defineProps<{
+    filters: AdFilters
+    hasActiveFilters: boolean
+    resultCount: number | null
+    showLocationFilter?: boolean
+  }>(),
+  {
+    showLocationFilter: true,
+  },
+)
 
 const emit = defineEmits<{
   change: [patch: Partial<AdFilters>]
@@ -33,6 +43,8 @@ type FilterDraft = Pick<
   AdFilters,
   | 'category'
   | 'location'
+  | 'lat'
+  | 'lng'
   | 'price_min'
   | 'price_max'
   | 'negotiable'
@@ -45,6 +57,8 @@ function draftOf(filters: AdFilters): FilterDraft {
   return {
     category: filters.category,
     location: filters.location,
+    lat: filters.lat,
+    lng: filters.lng,
     price_min: filters.price_min,
     price_max: filters.price_max,
     negotiable: filters.negotiable,
@@ -59,6 +73,7 @@ function draftOf(filters: AdFilters): FilterDraft {
  * Dzięki temu wybór trzech kategorii to jedno zapytanie, a nie trzy.
  */
 const draft = reactive<FilterDraft>(draftOf(props.filters))
+const locationField = ref<{ getSelection: () => LocationSelection } | null>(null)
 
 /** Adres pozostaje źródłem prawdy: link, „wstecz” i „Wyczyść” przestawiają szkic. */
 watch(
@@ -68,15 +83,46 @@ watch(
 
 const appliedDraft = computed(() => draftOf(props.filters))
 
+function locationIsDirty(): boolean {
+  if (!props.showLocationFilter) {
+    return false
+  }
+
+  const applied = appliedDraft.value
+  const selection = locationField.value?.getSelection() ?? {
+    label: draft.location ?? '',
+    latitude: draft.lat,
+    longitude: draft.lng,
+  }
+
+  return (
+    (selection.label || undefined) !== applied.location ||
+    selection.latitude !== applied.lat ||
+    selection.longitude !== applied.lng
+  )
+}
+
 const isDirty = computed(() => {
   const applied = appliedDraft.value
 
-  return (Object.keys(applied) as (keyof FilterDraft)[]).some((key) => draft[key] !== applied[key])
+  if (locationIsDirty()) {
+    return true
+  }
+
+  return (Object.keys(applied) as (keyof FilterDraft)[]).some((key) => {
+    if (key === 'location' || key === 'lat' || key === 'lng') {
+      return false
+    }
+
+    return draft[key] !== applied[key]
+  })
 })
 
 /** Licznik pasuje tylko do zatwierdzonych kryteriów, więc znika, gdy szkic je wyprzedza. */
 const submitLabel = computed(() =>
-  isDirty.value || props.resultCount === null ? 'Pokaż wyniki' : `Pokaż wyniki (${props.resultCount})`,
+  isDirty.value || props.resultCount === null
+    ? t('filters.showResults')
+    : t('filters.showResultsCount', { count: props.resultCount }),
 )
 
 const deliveryOptions = DELIVERY_ORDER.map((value) => ({ value, label: deliveryLabel(value) }))
@@ -89,8 +135,24 @@ function selectCategory(value: { category?: string }): void {
   draft.category = value.category
 }
 
-function apply(): void {
-  emit('change', { ...draft })
+async function apply(): Promise<void> {
+  if (!props.showLocationFilter) {
+    emit('change', { ...draft })
+    return
+  }
+
+  const selection = locationField.value?.getSelection() ?? {
+    label: draft.location ?? '',
+    latitude: draft.lat,
+    longitude: draft.lng,
+  }
+  const locationPatch = await buildLocationFilters(
+    selection.label || undefined,
+    selection.latitude,
+    selection.longitude,
+  )
+
+  emit('change', { ...draft, ...locationPatch })
 }
 </script>
 
@@ -98,11 +160,11 @@ function apply(): void {
   <aside class="surface sidebar">
     <header class="sidebar__header">
       <h2 class="sidebar__title">
-        Filtry
+        {{ t('filters.title') }}
       </h2>
       <Button
         v-if="hasActiveFilters"
-        label="Wyczyść"
+        :label="t('filters.clear')"
         text
         size="small"
         @click="emit('clear')"
@@ -111,7 +173,7 @@ function apply(): void {
 
     <section class="sidebar__section">
       <h3 class="sidebar__legend">
-        Kategorie
+        {{ t('filters.categories') }}
       </h3>
       <CategoryTreeFilter
         :category="draft.category"
@@ -121,7 +183,7 @@ function apply(): void {
 
     <section class="sidebar__section">
       <h3 class="sidebar__legend">
-        Cena (zł)
+        {{ t('filters.price') }}
       </h3>
       <PriceRangeFilter
         v-model:min="draft.price_min"
@@ -137,7 +199,7 @@ function apply(): void {
             binary
             @update:model-value="draft.negotiable = $event || undefined"
           />
-          <label for="filter-negotiable">Do negocjacji</label>
+          <label for="filter-negotiable">{{ t('filters.negotiable') }}</label>
         </li>
         <li>
           <Checkbox
@@ -146,28 +208,34 @@ function apply(): void {
             binary
             @update:model-value="draft.free = $event || undefined"
           />
-          <label for="filter-free">Za darmo</label>
+          <label for="filter-free">{{ t('filters.free') }}</label>
         </li>
       </ul>
     </section>
 
-    <section class="sidebar__section">
+    <section
+      v-if="showLocationFilter"
+      class="sidebar__section"
+    >
       <h3 class="sidebar__legend">
-        Lokalizacja
+        {{ t('filters.location') }}
       </h3>
-      <InputText
-        :model-value="draft.location ?? ''"
-        placeholder="Cała Polska"
-        aria-label="Lokalizacja"
+      <p class="sidebar__hint">
+        {{ t('filters.locationHint') }}
+      </p>
+      <LocationSearchField
+        ref="locationField"
+        :label="filters.location ?? ''"
+        :latitude="filters.lat"
+        :longitude="filters.lng"
         fluid
-        @update:model-value="draft.location = $event || undefined"
-        @keyup.enter="apply"
+        @submit="apply"
       />
     </section>
 
     <section class="sidebar__section">
       <h3 class="sidebar__legend">
-        Sposób wysyłki
+        {{ t('filters.delivery') }}
       </h3>
       <CheckboxGroupFilter
         :options="deliveryOptions"
@@ -178,7 +246,7 @@ function apply(): void {
 
     <section class="sidebar__section">
       <h3 class="sidebar__legend">
-        Stan
+        {{ t('filters.condition') }}
       </h3>
       <CheckboxGroupFilter
         :options="conditionOptions"
@@ -226,6 +294,13 @@ function apply(): void {
   margin: 0 0 0.625rem;
   font-size: 0.875rem;
   font-weight: 600;
+}
+
+.sidebar__hint {
+  margin: 0 0 0.625rem;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  line-height: 1.4;
 }
 
 .flags {

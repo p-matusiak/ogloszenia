@@ -2,6 +2,7 @@ import { mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
 
 import AdCard from '@/components/ads/AdCard.vue'
+import { createTestI18n } from '@/testing/i18n'
 import type { AdSummary } from '@/types/api'
 
 const RouterLinkStub = {
@@ -20,7 +21,8 @@ function makeAd(overrides: Partial<AdSummary> = {}): AdSummary {
     condition: 'used',
     delivery_methods: [],
     location: 'Warszawa',
-    district: null,
+    latitude: 52.2297,
+    longitude: 21.0122,
     status: 'active',
     published_at: '2026-07-01T10:00:00+00:00',
     expires_at: null,
@@ -32,7 +34,10 @@ function makeAd(overrides: Partial<AdSummary> = {}): AdSummary {
 function mountCard(ad: AdSummary) {
   return mount(AdCard, {
     props: { ad },
-    global: { stubs: { RouterLink: RouterLinkStub } },
+    global: {
+      plugins: [createTestI18n()],
+      stubs: { RouterLink: RouterLinkStub },
+    },
   })
 }
 
@@ -70,5 +75,22 @@ describe('AdCard', () => {
     expect(mountCard(makeAd({ location: null })).find('[data-testid="location"]').exists()).toBe(
       false,
     )
+  })
+
+  it('shows delivery icons instead of text labels', () => {
+    const wrapper = mountCard(makeAd({ delivery_methods: ['courier', 'post'] }))
+
+    expect(wrapper.text()).not.toContain('Kurier')
+    expect(wrapper.text()).not.toContain('Poczta')
+    expect(wrapper.findAll('.delivery-icons__item')).toHaveLength(2)
+  })
+
+  it('links to the ad detail route by slug', () => {
+    const wrapper = mountCard(makeAd({ slug: 'inny-ogloszenie' }))
+
+    expect(wrapper.getComponent(RouterLinkStub).props('to')).toEqual({
+      name: 'ads.show',
+      params: { slug: 'inny-ogloszenie' },
+    })
   })
 })

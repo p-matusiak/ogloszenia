@@ -44,7 +44,7 @@ it('paginates conversations with a cursor instead of page numbers', function ():
 });
 
 it('lists conversations for a participant', function (): void {
-    $buyer = User::factory()->create();
+    $buyer = User::factory()->create(['avatar_path' => 'avatars/buyer.jpg']);
     $seller = User::factory()->create();
     $ad = Ad::factory()->for($seller, 'user')->create();
     Conversation::query()->create([
@@ -61,7 +61,8 @@ it('lists conversations for a participant', function (): void {
         ->assertOk()
         ->assertJsonCount(1, 'data')
         ->assertJsonPath('data.0.ad.slug', $ad->slug)
-        ->assertJsonPath('data.0.is_unread', true);
+        ->assertJsonPath('data.0.is_unread', true)
+        ->assertJsonPath('data.0.other_party.avatar_url', fn (string $url): bool => str_contains($url, '/storage/avatars/buyer.jpg'));
 });
 
 it('lets the seller reply in an existing conversation', function (): void {

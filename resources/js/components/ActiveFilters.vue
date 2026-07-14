@@ -81,9 +81,9 @@ const emit = defineEmits<{
 }
 
 .chip--info {
-  border-color: color-mix(in srgb, var(--p-primary-color) 40%, transparent);
-  background: color-mix(in srgb, var(--p-primary-color) 8%, transparent);
-  color: var(--p-primary-color);
+  border-color: transparent;
+  background: color-mix(in srgb, var(--brand-orange) 11%, var(--surface-muted));
+  color: color-mix(in srgb, var(--brand-orange) 82%, var(--text-strong));
 }
 
 .chip--success {

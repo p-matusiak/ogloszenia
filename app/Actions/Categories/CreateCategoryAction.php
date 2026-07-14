@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\Categories;
 
 use App\Models\Category;
+use App\Repositories\Contracts\CategoryRepository;
 use App\Services\CategoryClosureRepository;
 use App\Support\CategorySlugGenerator;
 use Illuminate\Support\Facades\DB;
@@ -12,6 +13,7 @@ use Illuminate\Support\Facades\DB;
 final readonly class CreateCategoryAction
 {
     public function __construct(
+        private CategoryRepository $categories,
         private CategoryClosureRepository $closure,
         private CategorySlugGenerator $slugGenerator,
     ) {}
@@ -23,7 +25,7 @@ final readonly class CreateCategoryAction
     {
         return DB::transaction(function () use ($data): Category {
             $data['slug'] = $this->slugGenerator->generate((string) $data['name']);
-            $category = Category::query()->create($data);
+            $category = $this->categories->create($data);
 
             $this->closure->insertNode($category->id, $category->parent_id);
 

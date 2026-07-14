@@ -1,9 +1,36 @@
 import { mount } from '@vue/test-utils'
 import PrimeVue from 'primevue/config'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 import FilterSidebar from '@/components/filters/FilterSidebar.vue'
+import { createTestI18n } from '@/testing/i18n'
 import type { AdFilters } from '@/types/api'
+
+vi.mock('@/composables/useListingGeoFilters', async () => {
+  const actual = await vi.importActual<typeof import('@/composables/useListingGeoFilters')>(
+    '@/composables/useListingGeoFilters',
+  )
+
+  return {
+    ...actual,
+    buildLocationFilters: vi.fn((label?: string, lat?: number, lng?: number) => {
+      if (label === undefined || label === '') {
+        return Promise.resolve(actual.clearGeoFilters())
+      }
+
+      if (lat !== undefined && lng !== undefined) {
+        return Promise.resolve(actual.geoFiltersFromSelection({ label, lat, lng }))
+      }
+
+      return Promise.resolve({
+        location: label,
+        lat: undefined,
+        lng: undefined,
+        radius_km: undefined,
+      })
+    }),
+  }
+})
 
 /** Drzewo kategorii żyje na sklepie Pinia; tutaj liczy się tylko moment emisji. */
 const CategoryTreeFilterStub = {
@@ -15,7 +42,7 @@ function mountSidebar(filters: AdFilters = {}, resultCount: number | null = 12) 
   return mount(FilterSidebar, {
     props: { filters, hasActiveFilters: false, resultCount },
     global: {
-      plugins: [PrimeVue],
+      plugins: [PrimeVue, createTestI18n()],
       stubs: { CategoryTreeFilter: CategoryTreeFilterStub },
     },
   })
@@ -97,6 +124,15 @@ describe('FilterSidebar', () => {
     await wrapper.find('#filter-free').setValue(true)
 
     expect(submitLabel(wrapper)).toBe('Pokaż wyniki')
+  })
+
+  it('ukrywa lokalizację, gdy showLocationFilter jest wyłączone', async () => {
+    const wrapper = mountSidebar({ q: 'rower' }, 12)
+
+    await wrapper.setProps({ showLocationFilter: false })
+
+    expect(wrapper.text()).not.toContain('Lokalizacja')
+    expect(wrapper.find('input[aria-label="Lokalizacja"]').exists()).toBe(false)
   })
 
   it('nawigacja z zewnątrz („wstecz”, „Wyczyść”) przestawia szkic', async () => {

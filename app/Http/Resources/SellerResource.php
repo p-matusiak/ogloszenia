@@ -22,6 +22,8 @@ final class SellerResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
+            'id' => $this->id,
+            'slug' => $this->slug,
             'name' => $this->name,
             'avatar_url' => $this->avatarUrl(),
             'member_since' => $this->created_at?->year,

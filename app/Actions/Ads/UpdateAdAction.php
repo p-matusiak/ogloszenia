@@ -4,14 +4,17 @@ declare(strict_types=1);
 
 namespace App\Actions\Ads;
 
+use App\Actions\Users\SyncUserDefaultLocationAction;
 use App\Enums\AdStatus;
 use App\Enums\SettingKey;
+use App\Events\AdWasActivated;
 use App\Events\AdWasUpdated;
 use App\Models\Ad;
 use App\Repositories\Contracts\AdRepository;
+use App\Services\Ads\AdPublicationDecisionResolver;
+use App\Services\Contracts\AdContentModerator;
 use App\Services\Contracts\SettingsRepository;
 use App\Support\AdContactAttributes;
-use App\Support\AdPublicationWindow;
 use App\Support\AdSlugGenerator;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -23,7 +26,9 @@ final readonly class UpdateAdAction
         private SettingsRepository $settings,
         private AdSlugGenerator $slugGenerator,
         private AdImageSynchroniser $images,
-        private AdPublicationWindow $window,
+        private AdContentModerator $moderator,
+        private AdPublicationDecisionResolver $publication,
+        private SyncUserDefaultLocationAction $syncDefaultLocation,
     ) {}
 
     /**
@@ -41,24 +46,32 @@ final readonly class UpdateAdAction
     public function execute(Ad $ad, array $data, array $newImages = []): Ad
     {
         $changed = [];
+        $wasActivated = false;
 
-        $updated = DB::transaction(function () use ($ad, $data, $newImages, &$changed): Ad {
+        $updated = DB::transaction(function () use ($ad, $data, $newImages, &$changed, &$wasActivated): Ad {
             /** @var list<int> $removedImageIds */
             $removedImageIds = $data['removed_image_ids'] ?? [];
 
             $previousSlug = $ad->slug;
+            $previousStatus = $ad->status;
 
             $ad->fill($this->attributes($ad, $data));
             $this->ads->save($ad);
 
+            $wasActivated = $previousStatus !== AdStatus::Active && $ad->status === AdStatus::Active;
             $changed = $this->changedNotifiableAttributes($ad);
 
             $this->archivePreviousSlug($ad, $previousSlug);
 
             $this->images->synchronise($ad, $removedImageIds, $newImages);
+            $this->syncDefaultLocation->execute($ad->user, $data);
 
             return $ad->refresh();
         });
+
+        if ($wasActivated) {
+            event(new AdWasActivated($updated));
+        }
 
         $this->announceChange($updated, $changed);
 
@@ -125,7 +138,8 @@ final readonly class UpdateAdAction
             'delivery_methods' => $data['delivery_methods'] ?? [],
             'delivery_prices' => $this->pricesForChosenMethods($data),
             'location' => $location,
-            'district' => $data['district'] ?? null,
+            'latitude' => $data['latitude'] ?? null,
+            'longitude' => $data['longitude'] ?? null,
             'contact_email' => null,
             'contact_phone' => AdContactAttributes::overridePhone($data),
         ];
@@ -138,7 +152,10 @@ final readonly class UpdateAdAction
             );
         }
 
-        return $attributes + $this->resubmissionAttributes($ad);
+        $moderation = $this->moderator->review($title, (string) $data['description']);
+        $autoApprove = $this->settings->isEnabled(SettingKey::AutoApproveAds);
+
+        return $attributes + $this->publication->resolveForUpdate($ad, $moderation, $autoApprove);
     }
 
     /**
@@ -156,25 +173,5 @@ final readonly class UpdateAdAction
             static fn (mixed $price): string => (string) $price,
             array_filter($prices, static fn (mixed $price): bool => $price !== null && $price !== ''),
         );
-    }
-
-    /**
-     * Editing a rejected ad is the only way to fix it, so an edit puts it back
-     * into the normal publication flow instead of leaving it stuck.
-     *
-     * @return array<string, mixed>
-     */
-    private function resubmissionAttributes(Ad $ad): array
-    {
-        if ($ad->status !== AdStatus::Rejected) {
-            return [];
-        }
-
-        $autoApprove = $this->settings->isEnabled(SettingKey::AutoApproveAds);
-
-        return [
-            'status' => $autoApprove ? AdStatus::Active : AdStatus::Pending,
-            'rejection_reason' => null,
-        ] + ($autoApprove ? $this->window->open() : $this->window->closed());
     }
 }

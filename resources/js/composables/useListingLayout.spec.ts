@@ -14,7 +14,7 @@ describe('useListingLayout', () => {
   })
 
   it('restores the saved layout from localStorage', () => {
-    localStorage.setItem('ogloszenia:listing-layout', 'list')
+    localStorage.setItem('zunto:listing-layout', 'list')
 
     const { layout } = useListingLayout()
 
@@ -27,7 +27,7 @@ describe('useListingLayout', () => {
     setLayout('list')
 
     expect(layout.value).toBe('list')
-    expect(localStorage.getItem('ogloszenia:listing-layout')).toBe('list')
+    expect(localStorage.getItem('zunto:listing-layout')).toBe('list')
   })
 
   it('toggles between grid and list', () => {

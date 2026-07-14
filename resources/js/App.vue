@@ -6,6 +6,7 @@ import { useRoute } from 'vue-router'
 
 import AppHeader from '@/components/layout/AppHeader.vue'
 import CategoryNav from '@/components/layout/CategoryNav.vue'
+import SiteFooter from '@/components/layout/SiteFooter.vue'
 import EmailVerificationBanner from '@/components/auth/EmailVerificationBanner.vue'
 import { useTheme } from '@/composables/useTheme'
 import { useAuthStore } from '@/stores/auth'
@@ -16,9 +17,9 @@ const route = useRoute()
 const auth = useAuthStore()
 const categories = useCategoryStore()
 const { initialise } = useTheme()
-const year = new Date().getFullYear()
-
 const filters = computed(() => routeFilters(route.query))
+
+const isLandingPage = computed(() => route.name === 'landing')
 
 onMounted(async () => {
   initialise()
@@ -28,10 +29,13 @@ onMounted(async () => {
 
 <template>
   <div class="layout">
-    <AppHeader :filters="filters" />
-    <CategoryNav />
+    <AppHeader
+      :filters="filters"
+      :show-search="!isLandingPage"
+    />
+    <CategoryNav v-if="!isLandingPage" />
 
-    <main class="shell layout__main">
+    <main :class="['layout__main', isLandingPage ? 'layout__main--landing' : 'shell']">
       <!-- Suppressed on the activation page itself, which already says the same
            thing in its own card. -->
       <EmailVerificationBanner v-if="route.name !== 'email.verify'" />
@@ -39,24 +43,7 @@ onMounted(async () => {
       <RouterView />
     </main>
 
-    <footer class="layout__footer">
-      <div class="shell layout__footer-inner">
-        <p class="layout__footer-copy">
-          © {{ year }} Ogłoszenia — serwis ogłoszeń drobnych.
-        </p>
-        <nav
-          class="layout__footer-nav"
-          aria-label="Informacje prawne"
-        >
-          <RouterLink :to="{ name: 'terms' }">
-            Regulamin
-          </RouterLink>
-          <RouterLink :to="{ name: 'privacy' }">
-            Polityka prywatności
-          </RouterLink>
-        </nav>
-      </div>
-    </footer>
+    <SiteFooter />
 
     <Toast />
     <ConfirmDialog />
@@ -68,52 +55,16 @@ onMounted(async () => {
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
+  overflow-x: clip;
+  max-width: 100%;
 }
 
 .layout__main {
   flex: 1;
-  padding-block: 1.25rem 3rem;
+  padding-block: 1.25rem 2.5rem;
 }
 
-.layout__footer {
-  padding-block: 1.75rem;
-  border-top: 1px solid var(--surface-border);
-  background: var(--surface-card);
-  font-size: 0.875rem;
-}
-
-.layout__footer-inner {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.75rem;
-  text-align: center;
-}
-
-@media (width >= 48rem) {
-  .layout__footer-inner {
-    flex-direction: row;
-    justify-content: space-between;
-    text-align: left;
-  }
-}
-
-.layout__footer-copy {
-  margin: 0;
-  color: var(--text-muted);
-}
-
-.layout__footer-nav {
-  display: flex;
-  gap: 1.25rem;
-}
-
-.layout__footer-nav a {
-  color: var(--text-muted);
-  text-decoration: none;
-}
-
-.layout__footer-nav a:hover {
-  color: var(--p-primary-color);
+.layout__main--landing {
+  padding-block: 0;
 }
 </style>

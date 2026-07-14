@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 namespace App\Repositories\Eloquent;
 
+use App\Enums\AdStatus;
 use App\Models\Ad;
 use App\Repositories\Contracts\AdRepository;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator as LengthAwarePaginatorContract;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Collection as SupportCollection;
 use Illuminate\Support\Facades\Config;
 
 final class EloquentAdRepository implements AdRepository
@@ -18,6 +21,9 @@ final class EloquentAdRepository implements AdRepository
      * @var list<string>
      */
     private const array LISTING_RELATIONS = ['category.ancestors', 'primaryImage'];
+
+    /** Karty powiązanych ogłoszeń nie pokazują kategorii — sam primaryImage wystarczy. */
+    private const array RELATED_RELATIONS = ['primaryImage'];
 
     /**
      * Lista moderatora obejmuje wszystkie statusy (aktywne, oczekujące,
@@ -68,5 +74,98 @@ final class EloquentAdRepository implements AdRepository
             ->where('user_id', $userId)
             ->where('created_at', '>=', now()->startOfDay())
             ->count();
+    }
+
+    /**
+     * @return Collection<int, Ad>
+     */
+    public function listActiveBySellerExcluding(int $sellerId, int $excludeAdId, int $limit): Collection
+    {
+        return Ad::query()
+            ->where('user_id', $sellerId)
+            ->whereKeyNot($excludeAdId)
+            ->published()
+            ->with(self::RELATED_RELATIONS)
+            ->orderByDesc('published_at')
+            ->limit($limit)
+            ->get();
+    }
+
+    public function softDeleteAllOwnedByUser(int $userId): int
+    {
+        $query = Ad::query()->where('user_id', $userId);
+
+        $count = (clone $query)->count();
+
+        if ($count === 0) {
+            return 0;
+        }
+
+        $query->update([
+            'status' => AdStatus::Deleted,
+            'updated_at' => now(),
+        ]);
+
+        Ad::query()
+            ->where('user_id', $userId)
+            ->delete();
+
+        return $count;
+    }
+
+    public function expireDueActiveAds(): SupportCollection
+    {
+        $ads = Ad::query()
+            ->where('status', AdStatus::Active)
+            ->whereNotNull('expires_at')
+            ->where('expires_at', '<=', now())
+            ->with('user')
+            ->get();
+
+        foreach ($ads as $ad) {
+            $ad->status = AdStatus::Expired;
+            $ad->save();
+        }
+
+        return $ads;
+    }
+
+    public function listAdsDueForDeletionWarning(): SupportCollection
+    {
+        $graceDays = Config::integer('ads.refresh_grace_days');
+        $warningDays = Config::integer('ads.deletion_warning_days');
+        $warningThreshold = now()->subDays($graceDays - $warningDays);
+
+        return Ad::query()
+            ->where('status', AdStatus::Expired)
+            ->whereNotNull('expires_at')
+            ->where('expires_at', '<=', $warningThreshold)
+            ->whereNull('deletion_warning_sent_at')
+            ->with('user')
+            ->get();
+    }
+
+    public function markDeletionWarningSent(Ad $ad): void
+    {
+        $ad->deletion_warning_sent_at = now();
+        $ad->save();
+    }
+
+    public function purgeAdsPastRefreshGrace(): SupportCollection
+    {
+        $graceDays = Config::integer('ads.refresh_grace_days');
+        $deletionThreshold = now()->subDays($graceDays);
+
+        $ads = Ad::query()
+            ->where('status', AdStatus::Expired)
+            ->whereNotNull('expires_at')
+            ->where('expires_at', '<=', $deletionThreshold)
+            ->get();
+
+        foreach ($ads as $ad) {
+            $ad->update(['status' => AdStatus::Deleted]);
+        }
+
+        return $ads;
     }
 }

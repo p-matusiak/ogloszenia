@@ -2,6 +2,7 @@ import { client } from '@/api/client'
 import { pruneFilters } from '@/composables/useRouteFilters'
 import type {
   Ad,
+  AdCategorySuggestion,
   AdFilters,
   AdFormValues,
   AdSummary,
@@ -28,10 +29,24 @@ export async function fetchAd(slug: string): Promise<Ad> {
   return data.data
 }
 
+export async function fetchMoreFromSeller(slug: string): Promise<AdSummary[]> {
+  const { data } = await client.get<{ data: AdSummary[] }>(`${BASE}/ads/${slug}/more-from-seller`)
+
+  return data.data
+}
+
 export async function fetchMyAds(page = 1): Promise<Paginated<AdSummary>> {
   const { data } = await client.get<Paginated<AdSummary>>(`${BASE}/my/ads`, { params: { page } })
 
   return data
+}
+
+export async function suggestAdCategory(title: string): Promise<AdCategorySuggestion> {
+  const { data } = await client.post<ResourceEnvelope<AdCategorySuggestion>>(`${BASE}/ads/suggest-category`, {
+    title,
+  })
+
+  return data.data
 }
 
 export async function createAd(values: AdFormValues): Promise<Ad> {
@@ -86,7 +101,12 @@ function toFormData(values: AdFormValues): FormData {
   appendOptional(form, 'price', values.price === null ? '' : String(values.price))
   appendOptional(form, 'condition', values.condition ?? '')
   appendOptional(form, 'location', values.location)
-  appendOptional(form, 'district', values.district)
+  if (values.latitude !== null) {
+    form.append('latitude', String(values.latitude))
+  }
+  if (values.longitude !== null) {
+    form.append('longitude', String(values.longitude))
+  }
   form.append('use_custom_phone', values.use_custom_phone ? '1' : '0')
   if (values.use_custom_phone) {
     appendOptional(form, 'contact_phone', values.contact_phone)

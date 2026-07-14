@@ -2,11 +2,18 @@ import { mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
 
 import AdListItem from '@/components/ads/AdListItem.vue'
+import { createTestI18n } from '@/testing/i18n'
 import type { AdSummary } from '@/types/api'
 
 const RouterLinkStub = {
   props: ['to'],
   template: '<a><slot /></a>',
+}
+
+const tooltipStub = {
+  mounted(): void {},
+  updated(): void {},
+  unmounted(): void {},
 }
 
 function makeAd(overrides: Partial<AdSummary> = {}): AdSummary {
@@ -20,7 +27,8 @@ function makeAd(overrides: Partial<AdSummary> = {}): AdSummary {
     condition: 'used',
     delivery_methods: [],
     location: 'Warszawa, Mokotów',
-    district: null,
+    latitude: 52.2040093,
+    longitude: 21.0287184,
     status: 'active',
     published_at: '2026-07-01T10:00:00+00:00',
     expires_at: null,
@@ -32,7 +40,11 @@ function makeAd(overrides: Partial<AdSummary> = {}): AdSummary {
 function mountRow(ad: AdSummary) {
   return mount(AdListItem, {
     props: { ad },
-    global: { stubs: { RouterLink: RouterLinkStub } },
+    global: {
+      plugins: [createTestI18n()],
+      stubs: { RouterLink: RouterLinkStub },
+      directives: { tooltip: tooltipStub },
+    },
   })
 }
 
@@ -79,25 +91,21 @@ describe('AdListItem', () => {
     expect(mountRow(makeAd({ is_negotiable: true })).text()).toContain('Do negocjacji')
   })
 
-  it('joins the delivery methods into one badge, in Polish', () => {
+  it('shows delivery icons instead of text labels', () => {
     const wrapper = mountRow(makeAd({ delivery_methods: ['parcel_locker', 'courier', 'personal'] }))
 
-    expect(wrapper.text()).toContain('Paczkomat, Kurier, Odbiór osobisty')
+    expect(wrapper.text()).not.toContain('Paczkomat')
+    expect(wrapper.text()).not.toContain('Kurier')
+    expect(wrapper.find('.delivery-icons__item').exists()).toBe(true)
   })
 
-  it('renders no delivery badge when the ad offers none', () => {
-    expect(mountRow(makeAd({ delivery_methods: [] })).text()).not.toContain('Kurier')
+  it('renders no delivery icons when the ad offers none', () => {
+    expect(mountRow(makeAd({ delivery_methods: [] })).find('.delivery-icons').exists()).toBe(false)
   })
 
-  it('appends the district to the city', () => {
-    expect(mountRow(makeAd({ location: 'Warszawa', district: 'Mokotów' })).text()).toContain(
+  it('shows the full location label', () => {
+    expect(mountRow(makeAd({ location: 'Warszawa, Mokotów' })).text()).toContain(
       'Warszawa, Mokotów',
-    )
-  })
-
-  it('leaves no orphan comma when the district is missing', () => {
-    expect(mountRow(makeAd({ location: 'Warszawa', district: null })).text()).not.toContain(
-      'Warszawa,',
     )
   })
 })

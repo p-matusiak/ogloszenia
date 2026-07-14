@@ -15,15 +15,27 @@ final class DatabaseSeeder extends Seeder
     public function run(): void
     {
         $this->call(CategorySeeder::class);
-        $this->call(AdSeeder::class);
+
+        if (config('seeding.demo_ads_per_category', 0) > 0) {
+            $this->call(DemoMarketplaceSeeder::class);
+        } else {
+            $this->call(AdSeeder::class);
+            $this->call(DemoSellerSeeder::class);
+        }
+
+        $adminAttributes = [
+            'name' => 'Administrator',
+            'password' => 'password',
+            'is_admin' => true,
+        ];
+
+        if (! User::query()->where('email', 'admin@zunto.local')->exists()) {
+            $adminAttributes['slug'] = 'administrator';
+        }
 
         User::query()->updateOrCreate(
-            ['email' => 'admin@ogloszenia.local'],
-            [
-                'name' => 'Administrator',
-                'password' => 'password',
-                'is_admin' => true,
-            ],
+            ['email' => 'admin@zunto.local'],
+            $adminAttributes,
         );
     }
 }

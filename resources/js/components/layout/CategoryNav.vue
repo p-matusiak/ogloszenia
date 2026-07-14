@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { storeToRefs } from 'pinia'
+import { useI18n } from 'vue-i18n'
 
 import { useCategoryStore } from '@/stores/categories'
 
+const { t } = useI18n()
 const categories = useCategoryStore()
 const { roots } = storeToRefs(categories)
 </script>
@@ -10,15 +12,15 @@ const { roots } = storeToRefs(categories)
 <template>
   <nav
     class="catnav"
-    aria-label="Kategorie"
+    :aria-label="t('nav.categories')"
   >
     <div class="shell catnav__inner">
       <RouterLink
-        :to="{ name: 'home' }"
+        :to="{ name: 'listings' }"
         class="catnav__all"
       >
         <i class="pi pi-bars" />
-        <span>Wszystkie kategorie</span>
+        <span>{{ t('nav.allCategories') }}</span>
       </RouterLink>
 
       <RouterLink
@@ -38,6 +40,8 @@ const { roots } = storeToRefs(categories)
 .catnav {
   background: var(--surface-card);
   border-bottom: 1px solid var(--surface-border);
+  overflow-x: clip;
+  max-width: 100%;
 }
 
 .catnav__inner {
@@ -45,8 +49,11 @@ const { roots } = storeToRefs(categories)
   align-items: center;
   gap: 1.25rem;
   padding-block: 0.75rem;
-  /* Na telefonie kategorie przewijają się w poziomie zamiast zawijać. */
+  min-width: 0;
+  max-width: 100%;
+  /* Przewijanie zostaje w pasku kategorii — nie rozszerza całej strony. */
   overflow-x: auto;
+  overscroll-behavior-x: contain;
   scrollbar-width: none;
 }
 
@@ -66,11 +73,18 @@ const { roots } = storeToRefs(categories)
 }
 
 .catnav__all {
-  color: var(--p-primary-color);
+  color: var(--brand-blue);
   font-weight: 600;
 }
 
+.catnav__all:hover,
 .catnav__link:hover {
-  color: var(--p-primary-color);
+  color: var(--brand-orange);
+}
+
+.catnav__link--active {
+  color: var(--brand-blue);
+  font-weight: 600;
+  box-shadow: inset 0 -2px 0 var(--brand-orange);
 }
 </style>

@@ -42,6 +42,20 @@ describe('useFilterChips', () => {
     expect(chips.value.map((chip) => chip.label)).toEqual(['rowery'])
   })
 
+  it('shows radius in the location chip when geo filters are active', () => {
+    const filters = ref<AdFilters>({
+      location: 'Warszawa, województwo mazowieckie, Polska',
+      lat: 52.2297,
+      lng: 21.0122,
+      radius_km: 10,
+      page: 1,
+    })
+
+    const { chips } = useFilterChips(filters, categories)
+
+    expect(chips.value.map((chip) => chip.label)).toEqual(['Warszawa (+10 km)'])
+  })
+
   it('returns no chips when filters are empty', () => {
     const filters = ref<AdFilters>({ page: 1 })
 

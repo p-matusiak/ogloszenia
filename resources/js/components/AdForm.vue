@@ -4,7 +4,7 @@ import Checkbox from 'primevue/checkbox'
 import InputText from 'primevue/inputtext'
 import Message from 'primevue/message'
 import Textarea from 'primevue/textarea'
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, toRef } from 'vue'
 
 import AdPreviewPanel from '@/components/form/AdPreviewPanel.vue'
 import CategoryPicker from '@/components/form/CategoryPicker.vue'
@@ -12,7 +12,9 @@ import ConditionPicker from '@/components/form/ConditionPicker.vue'
 import DeliveryPicker from '@/components/form/DeliveryPicker.vue'
 import FormSection from '@/components/form/FormSection.vue'
 import ImageUploader from '@/components/form/ImageUploader.vue'
+import LocationPicker from '@/components/form/LocationPicker.vue'
 import MoneyInput from '@/components/form/MoneyInput.vue'
+import { useAdCategorySuggestion } from '@/composables/useAdCategorySuggestion'
 import { useAuthStore } from '@/stores/auth'
 import { useCategoryStore } from '@/stores/categories'
 import type { AdFormValues, AdImage } from '@/types/api'
@@ -74,6 +76,11 @@ const previewImage = computed<string | null>(() => {
 function patch(partial: Partial<AdFormValues>): void {
   emit('update:modelValue', { ...props.modelValue, ...partial })
 }
+
+const { isSuggesting, wasSuggested, isAiAvailable } = useAdCategorySuggestion(
+  toRef(props, 'modelValue'),
+  patch,
+)
 
 onMounted(() => void categories.load())
 </script>
@@ -137,7 +144,15 @@ onMounted(() => void categories.load())
             :invalid="Boolean(errors.category_id)"
             @update:model-value="patch({ category_id: $event })"
           />
-          <small>Zacznij pisać, żeby zawęzić listę.</small>
+          <small v-if="isSuggesting">
+            AI dobiera kategorię na podstawie tytułu…
+          </small>
+          <small v-else-if="wasSuggested && isAiAvailable">
+            Kategoria zasugerowana przez AI — możesz ją zmienić.
+          </small>
+          <small v-else>
+            Zacznij pisać tytuł, aby otrzymać podpowiedź kategorii, albo wybierz ręcznie.
+          </small>
           <Message
             v-if="errors.category_id"
             severity="error"
@@ -206,25 +221,29 @@ onMounted(() => void categories.load())
         :step="3"
         title="Lokalizacja"
       >
-        <div class="grid grid--pair">
-          <div class="field">
-            <label for="city">Miasto</label>
-            <InputText
-              id="city"
-              :model-value="modelValue.location"
-              :invalid="Boolean(errors.location)"
-              @update:model-value="patch({ location: $event ?? '' })"
-            />
-          </div>
-          <div class="field">
-            <label for="district">Dzielnica</label>
-            <InputText
-              id="district"
-              :model-value="modelValue.district"
-              @update:model-value="patch({ district: $event ?? '' })"
-            />
-          </div>
-        </div>
+        <LocationPicker
+          :location="modelValue.location"
+          :latitude="modelValue.latitude"
+          :longitude="modelValue.longitude"
+          :invalid="Boolean(errors.location || errors.latitude || errors.longitude)"
+          @change="patch($event)"
+        />
+        <Message
+          v-if="errors.location"
+          severity="error"
+          size="small"
+          variant="simple"
+        >
+          {{ errors.location }}
+        </Message>
+        <Message
+          v-if="errors.latitude || errors.longitude"
+          severity="error"
+          size="small"
+          variant="simple"
+        >
+          {{ errors.latitude ?? errors.longitude }}
+        </Message>
       </FormSection>
 
       <FormSection

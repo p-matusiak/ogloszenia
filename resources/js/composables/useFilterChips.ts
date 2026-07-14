@@ -1,5 +1,6 @@
 import { computed, type ComputedRef, type Ref } from 'vue'
 
+import { hasGeoFilters, locationChipLabel } from '@/composables/useListingGeoFilters'
 import {
   CONDITION_ORDER,
   DELIVERY_ORDER,
@@ -29,7 +30,10 @@ export function useFilterChips(
       active.push({ key: 'category', label: categoryPath(f.category) })
     }
     if (f.location) {
-      active.push({ key: 'location', label: f.location })
+      active.push({
+        key: 'location',
+        label: hasGeoFilters(f) ? locationChipLabel(f.location, f.radius_km) : f.location,
+      })
     }
     if (f.price_min !== undefined || f.price_max !== undefined) {
       active.push({ key: 'price', label: `${f.price_min ?? 0}–${f.price_max ?? '∞'} zł` })

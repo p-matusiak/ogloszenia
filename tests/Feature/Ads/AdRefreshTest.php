@@ -51,6 +51,16 @@ it('will not refresh a rejected ad', function (): void {
         ->assertJsonPath('code', 'AD_NOT_REFRESHABLE');
 });
 
+it('refuses to refresh an expired ad after the refresh grace period', function (): void {
+    $user = User::factory()->create();
+    $ad = Ad::factory()->for($user)->expiredPastRefreshGrace()->create();
+
+    $this->actingAs($user)
+        ->postJson("/api/v1/ads/{$ad->slug}/refresh")
+        ->assertUnprocessable()
+        ->assertJsonPath('code', 'AD_NOT_REFRESHABLE');
+});
+
 it('stops a stranger from refreshing someone else\'s ad', function (): void {
     $ad = Ad::factory()->lapsed()->create();
 

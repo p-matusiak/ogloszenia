@@ -42,6 +42,8 @@ final class DatabaseAdSearchEngine implements AdSearchEngine
      */
     public function search(array $criteria): LengthAwarePaginatorContract
     {
+        // published() jest obowiązkowy: publiczny listing nigdy nie pokazuje
+        // pending / rejected / expired / deleted ani wygasłych aktywnych.
         $query = $this->filtered($criteria)->published();
         $perPage = Config::integer('ads.per_page');
         $page = LengthAwarePaginator::resolveCurrentPage();
@@ -69,6 +71,7 @@ final class DatabaseAdSearchEngine implements AdSearchEngine
         $query = Ad::query();
 
         $this->applyTextFilters($query, $criteria);
+        $this->applyGeoFilters($query, $criteria);
         $this->applyPriceFilters($query, $criteria);
         $this->applyAttributeFilters($query, $criteria);
 
@@ -96,10 +99,41 @@ final class DatabaseAdSearchEngine implements AdSearchEngine
                 fn (Builder $builder) => $builder->inCategoryTree((string) $categorySlug),
             )
             ->when(
-                filled($criteria['location'] ?? null),
+                filled($criteria['location'] ?? null) && ! $this->hasGeoFilter($criteria),
                 // ILIKE, bo lokalizacja to swobodny tekst wpisany przez autora.
                 fn (Builder $builder) => $builder->where('location', 'ilike', '%'.$criteria['location'].'%'),
             );
+    }
+
+    /**
+     * Promień od punktu — PostGIS ST_DWithin + GiST. Gdy przychodzą współrzędne,
+     * tekstowy filtr location jest pomijany, bo geo jest precyzyjniejsze.
+     *
+     * @param  Builder<Ad>  $query
+     * @param  array<string, mixed>  $criteria
+     */
+    private function applyGeoFilters(Builder $query, array $criteria): void
+    {
+        if (! $this->hasGeoFilter($criteria)) {
+            return;
+        }
+
+        $query->withinRadius(
+            (float) $criteria['lat'],
+            (float) $criteria['lng'],
+            (float) $criteria['radius_km'],
+        );
+    }
+
+    /**
+     * @param  array<string, mixed>  $criteria
+     */
+    private function hasGeoFilter(array $criteria): bool
+    {
+        return isset($criteria['lat'], $criteria['lng'], $criteria['radius_km'])
+            && is_numeric($criteria['lat'])
+            && is_numeric($criteria['lng'])
+            && is_numeric($criteria['radius_km']);
     }
 
     /**
@@ -142,6 +176,10 @@ final class DatabaseAdSearchEngine implements AdSearchEngine
             ->when(
                 filled($criteria['delivery'] ?? null),
                 fn (Builder $builder) => $this->applyDeliveryFilter($builder, $this->list($criteria['delivery'])),
+            )
+            ->when(
+                filled($criteria['seller'] ?? null),
+                fn (Builder $builder) => $builder->whereRelation('user', 'slug', (string) $criteria['seller']),
             );
     }
 
@@ -227,7 +265,8 @@ final class DatabaseAdSearchEngine implements AdSearchEngine
      * Filtry pokryte indeksem (kategoria, cena, free, brak filtra) liczymy
      * dokładnie — Index Only Scan zwraca prawdziwą liczbę w milisekundach, a dla
      * poddrzewa kategorii estymator planisty i tak myli się o rzędy wielkości.
-     * Filtry bez indeksu (delivery, condition, negotiable, location, q) zmuszają
+     * Filtry bez indeksu (delivery, condition, negotiable, location, q; geo ma
+     * GiST) zmuszają
      * COUNT(*) do Seq Scanu całej sterty — kilka sekund niezależnie od liczby
      * trafień. Tam powyżej progu zwracamy szacunek planisty (błąd rzędu ułamka
      * procenta); małe zbiory nadal liczymy dokładnie, bo liczba jest wtedy

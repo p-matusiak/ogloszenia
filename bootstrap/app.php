@@ -7,6 +7,7 @@ use App\Exceptions\Domain\DomainException;
 use App\Http\Middleware\EnsureEmailIsVerified;
 use App\Http\Middleware\EnsureUserIsAdmin;
 use App\Http\Middleware\RedirectLegacyCategoryFilters;
+use App\Http\Middleware\SetAppLocale;
 use App\Support\EmailVerificationRedirect;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Foundation\Application;
@@ -50,6 +51,9 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // Kategorie mają dziś własne adresy; stare `/?category=` musi oddać 301.
         $middleware->appendToGroup('web', RedirectLegacyCategoryFilters::class);
+
+        $middleware->appendToGroup('web', SetAppLocale::class);
+        $middleware->appendToGroup('api', SetAppLocale::class);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

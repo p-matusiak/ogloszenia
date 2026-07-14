@@ -19,6 +19,9 @@ export function routeFilters(query: LocationQuery, categorySlug?: string): AdFil
     q: text(query.q),
     category: categorySlug,
     location: text(query.location),
+    lat: number(query.lat),
+    lng: number(query.lng),
+    radius_km: number(query.radius_km),
     price_min: number(query.price_min),
     price_max: number(query.price_max),
     negotiable: flag(query.negotiable),
@@ -26,6 +29,7 @@ export function routeFilters(query: LocationQuery, categorySlug?: string): AdFil
     condition: text(query.condition),
     delivery: text(query.delivery),
     sort: sort(query.sort),
+    seller: text(query.seller),
     page: number(query.page) ?? 1,
   }
 }
@@ -40,7 +44,7 @@ export function listingLocation(filters: AdFilters): RouteLocationRaw {
   const query = pruneFilters(rest)
 
   return category === undefined || category === ''
-    ? { name: 'home', query }
+    ? { name: 'listings', query }
     : { name: 'categories.show', params: { slug: category }, query }
 }
 

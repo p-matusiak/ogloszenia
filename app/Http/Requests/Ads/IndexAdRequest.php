@@ -33,6 +33,16 @@ final class IndexAdRequest extends FormRequest
 
             'location' => ['nullable', 'string', 'max:120'],
 
+            'lat' => ['nullable', 'numeric', 'between:-90,90', 'required_with:lng,radius_km'],
+            'lng' => ['nullable', 'numeric', 'between:-180,180', 'required_with:lat,radius_km'],
+            'radius_km' => [
+                'nullable',
+                'numeric',
+                'min:1',
+                'max:'.config('ads.geo.max_radius_km'),
+                'required_with:lat,lng',
+            ],
+
             // `gte:price_min` nie działa, gdy price_min w ogóle nie przyszło —
             // porównanie z brakującym polem zawodzi. Sprawdzamy to w after().
             'price_min' => ['nullable', 'numeric', 'min:0', 'max:99999999.99'],
@@ -46,6 +56,9 @@ final class IndexAdRequest extends FormRequest
             'delivery' => ['nullable', 'string'],
 
             'sort' => ['nullable', Rule::in(AdSort::values())],
+
+            // Tylko z linku (strona sprzedawcy), nie z formularza filtrów.
+            'seller' => ['nullable', 'string', 'max:120', 'exists:users,slug'],
 
             'page' => ['nullable', 'integer', 'min:1'],
         ];

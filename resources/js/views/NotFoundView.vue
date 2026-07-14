@@ -1,14 +1,17 @@
 <script setup lang="ts">
 import Button from 'primevue/button'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 </script>
 
 <template>
   <section class="not-found">
-    <h1>404 — nie znaleziono strony</h1>
-    <p>Strona, której szukasz, nie istnieje lub została usunięta.</p>
-    <RouterLink :to="{ name: 'home' }">
+    <h1>{{ t('errors.notFoundTitle') }}</h1>
+    <p>{{ t('errors.notFoundDescription') }}</p>
+    <RouterLink :to="{ name: 'landing' }">
       <Button
-        label="Wróć do ogłoszeń"
+        :label="t('errors.notFoundBack')"
         icon="pi pi-home"
       />
     </RouterLink>

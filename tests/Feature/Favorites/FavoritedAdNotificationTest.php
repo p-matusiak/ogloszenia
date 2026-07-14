@@ -26,16 +26,23 @@ it('does not email when no notable field changes', function (): void {
     Notification::fake();
 
     $owner = User::factory()->create();
-    $ad = Ad::factory()->for($owner)->create();
+    $ad = Ad::factory()->for($owner)->create([
+        'location' => 'Warszawa',
+        'latitude' => 52.2297,
+        'longitude' => 21.0122,
+    ]);
     $favoriter = User::factory()->create();
     $favoriter->favoriteAds()->attach($ad->id);
 
-    // Te same tytuł, opis i cena — zmienia się tylko nieistotna dzielnica.
+    // Te same pola istotne dla obserwujących — zmienia się tylko negocjowalność.
     $payload = validAdPayload($ad->category, [
         'title' => $ad->title,
         'description' => $ad->description,
-        'price' => (float) $ad->price,
-        'district' => 'Zupełnie inna dzielnica',
+        'price' => $ad->price === null ? null : (float) $ad->price,
+        'location' => $ad->location,
+        'latitude' => $ad->latitude === null ? null : (float) $ad->latitude,
+        'longitude' => $ad->longitude === null ? null : (float) $ad->longitude,
+        'is_negotiable' => ! $ad->is_negotiable,
     ]);
 
     $this->actingAs($owner)

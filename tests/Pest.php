@@ -46,6 +46,8 @@ function validAdPayload(Category $leaf, array $overrides = []): array
         'category_id' => $leaf->id,
         'price' => 1999.99,
         'location' => 'Warszawa',
+        'latitude' => 52.2297,
+        'longitude' => 21.0122,
         'accept_terms' => true,
     ], $overrides);
 }

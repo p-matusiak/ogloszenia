@@ -7,6 +7,7 @@ import Select from 'primevue/select'
 import SelectButton from 'primevue/selectbutton'
 import { storeToRefs } from 'pinia'
 import { computed, onMounted, ref, watch, watchEffect } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 
 import AdSearchForm from '@/components/AdSearchForm.vue'
@@ -24,12 +25,14 @@ import {
   DELIVERY_ORDER,
   parseList,
 } from '@/composables/useOfferLabels'
+import { fetchSeller } from '@/api/modules/v1/sellers'
 import { setDocumentTitle } from '@/composables/usePageTitle'
 import { listingLocation, routeFilters } from '@/composables/useRouteFilters'
 import { useAdsStore } from '@/stores/ads'
 import { useCategoryStore } from '@/stores/categories'
-import type { AdFilters, AdSort } from '@/types/api'
+import type { AdFilters, AdSort, SellerProfile } from '@/types/api'
 
+const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
 const adsStore = useAdsStore()
@@ -46,27 +49,34 @@ const categorySlug = computed(() =>
 const filters = computed<AdFilters>(() => routeFilters(route.query, categorySlug.value))
 const { chips, hasActiveFilters } = useFilterChips(filters, categories)
 
+const sellerProfile = ref<SellerProfile | null>(null)
+
+const sellerBannerName = computed(() => sellerProfile.value?.name ?? null)
+
 /** Pusta, dopóki drzewo się nie doładuje — okruszki pojawiają się wtedy same. */
 const breadcrumb = computed(() =>
   categorySlug.value === undefined ? [] : categories.pathOf(categorySlug.value),
 )
 
-const heading = computed(() => breadcrumb.value.at(-1)?.name ?? 'Ogłoszenia')
+const heading = computed(() => breadcrumb.value.at(-1)?.name ?? t('home.heading'))
 
-const layoutOptions = [
-  { label: 'Siatka', value: 'grid', icon: 'pi pi-th-large' },
-  { label: 'Lista', value: 'list', icon: 'pi pi-list' },
-]
+/** Lokalizacja dopiero po wyszukaniu frazy — na gołej stronie głównej tylko pole „Czego szukasz?”. */
+const showLocationFilter = computed(() => Boolean(filters.value.q?.trim()))
+
+const layoutOptions = computed(() => [
+  { label: t('home.layoutGrid'), value: 'grid' as const, icon: 'pi pi-th-large' },
+  { label: t('home.layoutList'), value: 'list' as const, icon: 'pi pi-list' },
+])
 
 const sortOptions = computed<{ label: string; value: AdSort }[]>(() => {
   const base = [
-    { label: 'Najnowsze', value: 'newest' as const },
-    { label: 'Najtańsze', value: 'price_asc' as const },
-    { label: 'Najdroższe', value: 'price_desc' as const },
+    { label: t('home.sortNewest'), value: 'newest' as const },
+    { label: t('home.sortPriceAsc'), value: 'price_asc' as const },
+    { label: t('home.sortPriceDesc'), value: 'price_desc' as const },
   ]
 
   if (filters.value.q) {
-    return [{ label: 'Trafność', value: 'relevance' as const }, ...base]
+    return [{ label: t('home.sortRelevance'), value: 'relevance' as const }, ...base]
   }
 
   return base
@@ -97,6 +107,16 @@ async function removeChip(key: string): Promise<void> {
     return
   }
 
+  if (key === 'location') {
+    await changeFilters({
+      location: undefined,
+      lat: undefined,
+      lng: undefined,
+      radius_km: undefined,
+    })
+    return
+  }
+
   await changeFilters({ [key]: undefined })
 }
 
@@ -123,11 +143,33 @@ onMounted(async () => {
 
 watch(filters, (next) => void adsStore.search(next))
 
+watch(
+  () => filters.value.seller,
+  async (sellerSlug) => {
+    sellerProfile.value = null
+
+    if (sellerSlug === undefined) {
+      return
+    }
+
+    try {
+      sellerProfile.value = await fetchSeller(sellerSlug)
+    } catch {
+      sellerProfile.value = null
+    }
+  },
+  { immediate: true },
+)
+
 // Serwer renderuje tytuł strony kategorii, ale nawigacja w SPA nie przeładowuje
 // `<head>`. Nazwa kategorii bierze się z drzewa, więc tytuł dopina się dopiero
 // po jego załadowaniu — stąd `watchEffect`, a nie jednorazowy zapis.
 watchEffect(() =>
-  setDocumentTitle(categorySlug.value === undefined ? undefined : `${heading.value} — ogłoszenia`),
+  setDocumentTitle(
+    categorySlug.value === undefined
+      ? t('routes.listings')
+      : t('home.headingCategory', { name: heading.value }),
+  ),
 )
 </script>
 
@@ -137,6 +179,7 @@ watchEffect(() =>
       :filters="filters"
       :has-active-filters="hasActiveFilters"
       :result-count="meta?.total ?? null"
+      :show-location-filter="showLocationFilter"
       class="page__sidebar"
       @change="changeFilters"
       @clear="navigate({})"
@@ -148,10 +191,10 @@ watchEffect(() =>
           <nav
             v-if="breadcrumb.length > 0"
             class="crumbs"
-            aria-label="Ścieżka kategorii"
+            :aria-label="t('home.breadcrumbLabel')"
           >
-            <RouterLink :to="{ name: 'home' }">
-              Ogłoszenia
+            <RouterLink :to="{ name: 'listings' }">
+              {{ t('home.heading') }}
             </RouterLink>
             <template
               v-for="(node, index) in breadcrumb"
@@ -175,14 +218,28 @@ watchEffect(() =>
           </nav>
 
           <h1 class="results__title">
-            {{ heading }}
+            {{ sellerBannerName ? t('home.headingSeller', { name: sellerBannerName }) : heading }}
             <span
               v-if="meta"
               class="results__count"
             >{{ meta.total }}</span>
           </h1>
-          <p class="results__hint">
-            Przeglądaj oferty lub zawęź wyniki filtrami.
+          <p
+            v-if="sellerBannerName && filters.seller"
+            class="results__hint"
+          >
+            <RouterLink
+              :to="{ name: 'sellers.show', params: { sellerSlug: filters.seller ?? '' } }"
+              class="results__seller-link"
+            >
+              {{ t('home.sellerProfile') }}
+            </RouterLink>
+          </p>
+          <p
+            v-else
+            class="results__hint"
+          >
+            {{ t('home.hint') }}
           </p>
         </div>
 
@@ -201,7 +258,7 @@ watchEffect(() =>
           :options="layoutOptions"
           option-label="label"
           option-value="value"
-          aria-label="Układ listy"
+          :aria-label="t('home.layoutAria')"
           @update:model-value="setLayout($event as 'grid' | 'list')"
         >
           <template #option="{ option }">
@@ -218,7 +275,7 @@ watchEffect(() =>
           :options="sortOptions"
           option-label="label"
           option-value="value"
-          aria-label="Sortowanie"
+          :aria-label="t('home.sortAria')"
           size="small"
           @update:model-value="changeFilters({ sort: $event as AdSort })"
         />
@@ -258,7 +315,7 @@ watchEffect(() =>
       >
         <span>{{ error }}</span>
         <Button
-          label="Spróbuj ponownie"
+          :label="t('home.retry')"
           text
           size="small"
           @click="adsStore.search(filters)"
@@ -268,12 +325,12 @@ watchEffect(() =>
       <EmptyState
         v-else-if="isEmpty"
         icon="pi pi-search"
-        title="Brak ogłoszeń spełniających kryteria"
-        description="Spróbuj innych słów kluczowych albo wyczyść filtry."
+        :title="t('home.emptyTitle')"
+        :description="t('home.emptyDescription')"
         class="results__block"
       >
         <Button
-          label="Wyczyść filtry"
+          :label="t('home.clearFilters')"
           outlined
           @click="navigate({})"
         />
@@ -310,13 +367,14 @@ watchEffect(() =>
 
     <Drawer
       v-model:visible="isFilterDrawerOpen"
-      header="Filtry"
+      :header="t('filters.title')"
       class="page__drawer"
     >
       <FilterSidebar
         :filters="filters"
         :has-active-filters="hasActiveFilters"
         :result-count="meta?.total ?? null"
+        :show-location-filter="showLocationFilter"
         @change="changeFilters"
         @clear="navigate({})"
       />
@@ -327,9 +385,11 @@ watchEffect(() =>
 <style scoped>
 .page {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--stack-gap);
   align-items: start;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .page__sidebar {
@@ -350,6 +410,11 @@ watchEffect(() =>
   .results__search {
     display: none;
   }
+}
+
+/* Wyszukiwarka jest w navbarze; tutaj zostaje tylko przycisk filtrów na mobile. */
+.results__search :deep(.search__capsule) {
+  display: none;
 }
 
 .results {
@@ -391,6 +456,7 @@ watchEffect(() =>
   margin: 0;
   font-size: 1.35rem;
   font-weight: 700;
+  overflow-wrap: anywhere;
 }
 
 .results__count {
@@ -409,6 +475,16 @@ watchEffect(() =>
   color: var(--text-muted);
 }
 
+.results__seller-link {
+  font-weight: 600;
+  color: var(--p-primary-color);
+  text-decoration: none;
+}
+
+.results__seller-link:hover {
+  text-decoration: underline;
+}
+
 .results__toolbar {
   display: flex;
   flex-wrap: wrap;
@@ -417,6 +493,13 @@ watchEffect(() =>
   gap: 0.75rem;
   padding: 0.875rem var(--card-padding);
   border-bottom: 1px solid var(--surface-border);
+  min-width: 0;
+}
+
+.results__toolbar :deep(.p-select),
+.results__toolbar :deep(.p-selectbutton) {
+  min-width: 0;
+  max-width: 100%;
 }
 
 .results__layout-label {

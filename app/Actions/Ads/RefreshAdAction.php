@@ -22,7 +22,10 @@ final readonly class RefreshAdAction
             throw new AdNotRefreshableException($ad->expires_at);
         }
 
-        $ad->fill(['status' => AdStatus::Active] + $this->window->open());
+        $ad->fill([
+            'status' => AdStatus::Active,
+            'deletion_warning_sent_at' => null,
+        ] + $this->window->open());
         $ad->save();
 
         return $ad;

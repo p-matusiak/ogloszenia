@@ -1,7 +1,7 @@
 import { ref, type Ref } from 'vue'
 
 import { errorMessage, validationErrors } from '@/api/client'
-import type { Ad, AdFormValues } from '@/types/api'
+import type { Ad, AdFormValues, User } from '@/types/api'
 
 export function emptyAdForm(): AdFormValues {
   return {
@@ -14,13 +14,32 @@ export function emptyAdForm(): AdFormValues {
     delivery_methods: [],
     delivery_prices: {},
     location: '',
-    district: '',
+    latitude: null,
+    longitude: null,
     use_custom_phone: false,
     contact_phone: '',
     accept_terms: false,
     images: [],
     removed_image_ids: [],
   }
+}
+
+export function prefillLocationFromUser(values: AdFormValues, user: User | null): AdFormValues {
+  if (
+    user?.default_location
+    && user.default_latitude !== null
+    && user.default_longitude !== null
+    && values.location === ''
+  ) {
+    return {
+      ...values,
+      location: user.default_location,
+      latitude: user.default_latitude,
+      longitude: user.default_longitude,
+    }
+  }
+
+  return values
 }
 
 export function adToForm(ad: Ad): AdFormValues {
@@ -34,7 +53,8 @@ export function adToForm(ad: Ad): AdFormValues {
     delivery_methods: ad.delivery_methods,
     delivery_prices: { ...ad.delivery_prices },
     location: ad.location ?? '',
-    district: ad.district ?? '',
+    latitude: ad.latitude,
+    longitude: ad.longitude,
     use_custom_phone: Boolean(ad.contact_phone),
     // Pełny numer nadpisania przychodzi tylko autorowi; null znaczy „z profilu”.
     contact_phone: ad.contact_phone ?? '',

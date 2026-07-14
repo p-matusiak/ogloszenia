@@ -12,6 +12,7 @@ describe('routeFilters', () => {
           price_min: '100',
           price_max: '900',
           sort: 'price_asc',
+          seller: 'jan-kowalski',
           page: '3',
         },
         'samochody',
@@ -20,9 +21,13 @@ describe('routeFilters', () => {
       q: 'rower',
       category: 'samochody',
       location: 'Warszawa',
+      lat: undefined,
+      lng: undefined,
+      radius_km: undefined,
       price_min: 100,
       price_max: 900,
       sort: 'price_asc',
+      seller: 'jan-kowalski',
       page: 3,
     })
   })
@@ -37,9 +42,40 @@ describe('routeFilters', () => {
       q: undefined,
       category: undefined,
       location: undefined,
+      lat: undefined,
+      lng: undefined,
+      radius_km: undefined,
       price_min: undefined,
       price_max: undefined,
       sort: undefined,
+      seller: undefined,
+      page: 1,
+    })
+  })
+
+  it('reads the seller filter from the query string', () => {
+    expect(routeFilters({ seller: 'jan-kowalski' }).seller).toBe('jan-kowalski')
+  })
+
+  it('reads geo filters from the query string', () => {
+    expect(
+      routeFilters({
+        location: 'Warszawa, Polska',
+        lat: '52.2297',
+        lng: '21.0122',
+        radius_km: '10',
+      }),
+    ).toEqual({
+      q: undefined,
+      category: undefined,
+      location: 'Warszawa, Polska',
+      lat: 52.2297,
+      lng: 21.0122,
+      radius_km: 10,
+      price_min: undefined,
+      price_max: undefined,
+      sort: undefined,
+      seller: undefined,
       page: 1,
     })
   })
@@ -82,7 +118,7 @@ describe('listingLocation', () => {
 
   it('falls back to the plain listing when no category is selected', () => {
     expect(listingLocation({ q: 'rower' })).toEqual({
-      name: 'home',
+      name: 'listings',
       query: { q: 'rower' },
     })
   })
@@ -93,6 +129,31 @@ describe('listingLocation', () => {
 
     expect(location).toMatchObject({ name: 'categories.show', params: { slug: 'rowery' } })
     expect(routeFilters({ q: 'rower', sort: 'price_asc' }, 'rowery')).toEqual(filters)
+  })
+
+  it('round-trips geo filters through the URL', () => {
+    const filters = routeFilters({
+      location: 'Warszawa, Polska',
+      lat: '52.2297',
+      lng: '21.0122',
+      radius_km: '10',
+    })
+    const location = listingLocation(filters) as {
+      name: string
+      query: Record<string, string>
+    }
+
+    expect(location).toEqual({
+      name: 'listings',
+      query: {
+        location: 'Warszawa, Polska',
+        lat: '52.2297',
+        lng: '21.0122',
+        radius_km: '10',
+        page: '1',
+      },
+    })
+    expect(routeFilters(location.query)).toEqual(filters)
   })
 })
 

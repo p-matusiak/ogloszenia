@@ -18,16 +18,28 @@ final class AdSeederProfile
     ];
 
     /**
-     * @var list<string>
+     * @var list<array{0: float, 1: float}>
      */
-    private const array DISTRICTS = [
-        'Mokotów', 'Wola', 'Praga-Południe', 'Śródmieście', 'Ursynów', 'Ochota',
-        'Bielany', 'Krzyki', 'Stare Miasto', 'Jeżyce', 'Wrzeszcz', 'Bronowice',
+    private const array CITY_COORDINATES = [
+        [52.2297, 21.0122],
+        [50.0647, 19.9450],
+        [51.1079, 17.0385],
+        [52.4064, 16.9252],
+        [54.3520, 18.6466],
+        [51.7592, 19.4560],
+        [50.2649, 19.0238],
+        [51.2465, 22.5684],
+        [53.4285, 14.5528],
+        [53.1235, 18.0084],
+        [53.1325, 23.1688],
+        [50.0412, 21.9991],
+        [53.0138, 18.5984],
+        [50.8661, 20.6286],
     ];
 
     public static function sellerEmail(int $sequence): string
     {
-        return sprintf('seed-seller-%03d@ogloszenia.local', $sequence);
+        return sprintf('seed-seller-%03d@zunto.local', $sequence);
     }
 
     public static function sellerName(int $sequence): string
@@ -153,9 +165,12 @@ final class AdSeederProfile
         return self::CITIES[$sequence % count(self::CITIES)];
     }
 
-    public static function district(int $sequence): ?string
+    /**
+     * @return array{0: float, 1: float}
+     */
+    public static function coordinates(int $sequence): array
     {
-        return $sequence % 2 === 0 ? self::DISTRICTS[$sequence % count(self::DISTRICTS)] : null;
+        return self::CITY_COORDINATES[$sequence % count(self::CITY_COORDINATES)];
     }
 
     /**

@@ -3,6 +3,7 @@ import { ref } from 'vue'
 
 import { errorMessage } from '@/api/client'
 import * as favoritesApi from '@/api/modules/v1/favorites'
+import { i18n } from '@/i18n/index'
 import type { AdSummary, PaginationMeta } from '@/types/api'
 
 export const useFavoritesStore = defineStore('favorites', () => {
@@ -53,7 +54,7 @@ export const useFavoritesStore = defineStore('favorites', () => {
       ids.value = new Set([...ids.value, ...result.data.map((ad) => ad.id)])
       areIdsLoaded = true
     } catch (caught: unknown) {
-      error.value = errorMessage(caught, 'Nie udało się pobrać ulubionych.')
+      error.value = errorMessage(caught, i18n.global.t('errors.favoritesFetch'))
       favorites.value = []
       meta.value = null
     } finally {

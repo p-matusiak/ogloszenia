@@ -7,6 +7,8 @@ namespace App\Repositories\Contracts;
 use App\Models\Ad;
 use App\Search\Contracts\AdSearchEngine;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Collection as SupportCollection;
 
 interface AdRepository
 {
@@ -28,4 +30,36 @@ interface AdRepository
     public function save(Ad $ad): Ad;
 
     public function countCreatedTodayForUser(int $userId): int;
+
+    /**
+     * Aktywne ogłoszenia sprzedawcy na sekcję „inne od tego sprzedawcy”.
+     *
+     * @return Collection<int, Ad>
+     */
+    public function listActiveBySellerExcluding(int $sellerId, int $excludeAdId, int $limit): Collection;
+
+    public function softDeleteAllOwnedByUser(int $userId): int;
+
+    /**
+     * Aktywne ogłoszenia po terminie `expires_at` przenoszone do statusu expired.
+     *
+     * @return SupportCollection<int, Ad>
+     */
+    public function expireDueActiveAds(): SupportCollection;
+
+    /**
+     * Wygasłe ogłoszenia, dla których minął termin ostrzeżenia przed usunięciem.
+     *
+     * @return SupportCollection<int, Ad>
+     */
+    public function listAdsDueForDeletionWarning(): SupportCollection;
+
+    public function markDeletionWarningSent(Ad $ad): void;
+
+    /**
+     * Wygasłe ogłoszenia po okresie na odświeżenie — oznaczane jako usunięte.
+     *
+     * @return SupportCollection<int, Ad>
+     */
+    public function purgeAdsPastRefreshGrace(): SupportCollection;
 }

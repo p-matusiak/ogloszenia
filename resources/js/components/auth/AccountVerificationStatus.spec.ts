@@ -21,6 +21,9 @@ function makeUser(isVerified: boolean): User {
     is_admin: false,
     is_email_verified: isVerified,
     phone: null,
+    default_location: null,
+    default_latitude: null,
+    default_longitude: null,
   }
 }
 

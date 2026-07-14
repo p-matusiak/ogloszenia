@@ -6,6 +6,7 @@ namespace App\Services\Seo;
 
 use App\Models\Ad;
 use App\Models\Category;
+use App\Models\User;
 use App\Support\Seo\AdSeoText;
 use App\Support\Seo\AdStructuredData;
 use App\Support\Seo\CategorySeo;
@@ -68,6 +69,20 @@ final readonly class SeoPresenter
         return $isVisible
             ? $meta->withStructuredData($this->structuredData->build($ad))
             : $meta;
+    }
+
+    public function forSeller(User $seller): PageMeta
+    {
+        $description = $seller->bio !== null && $seller->bio !== ''
+            ? Str::limit($seller->bio, 160)
+            : 'Ogłoszenia sprzedawcy '.$seller->name.' w serwisie '.Config::string('seo.site_name').'.';
+
+        return new PageMeta(
+            title: $this->withSiteName('Ogłoszenia — '.$seller->name),
+            description: $description,
+            canonical: $this->siteUrl->route('sellers.show', ['slug' => $seller->slug]),
+            indexable: true,
+        );
     }
 
     public function forRequest(Request $request): PageMeta

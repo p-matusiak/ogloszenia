@@ -4,15 +4,18 @@ declare(strict_types=1);
 
 namespace App\Actions\Ads;
 
+use App\Actions\Users\SyncUserDefaultLocationAction;
 use App\Enums\AdStatus;
 use App\Enums\SettingKey;
+use App\Events\AdWasActivated;
 use App\Exceptions\Domain\DailyAdLimitReachedException;
 use App\Models\Ad;
 use App\Models\User;
 use App\Repositories\Contracts\AdRepository;
+use App\Services\Ads\AdPublicationDecisionResolver;
+use App\Services\Contracts\AdContentModerator;
 use App\Services\Contracts\SettingsRepository;
 use App\Support\AdContactAttributes;
-use App\Support\AdPublicationWindow;
 use App\Support\AdSlugGenerator;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\UploadedFile;
@@ -27,7 +30,9 @@ final readonly class CreateAdAction
         private SettingsRepository $settings,
         private AdSlugGenerator $slugGenerator,
         private StoreAdImagesAction $storeImages,
-        private AdPublicationWindow $window,
+        private AdContentModerator $moderator,
+        private AdPublicationDecisionResolver $publication,
+        private SyncUserDefaultLocationAction $syncDefaultLocation,
     ) {}
 
     /**
@@ -43,13 +48,20 @@ final readonly class CreateAdAction
         return Cache::lock("ads:create:{$user->id}", 10)->block(5, function () use ($user, $data, $images): Ad {
             $this->guardDailyLimit($user);
 
-            return DB::transaction(function () use ($user, $data, $images): Ad {
+            $ad = DB::transaction(function () use ($user, $data, $images): Ad {
                 $ad = $this->ads->create($this->attributes($user, $data));
 
                 $this->storeImages->execute($ad, $images);
+                $this->syncDefaultLocation->execute($user, $data);
 
                 return $ad;
             });
+
+            if ($ad->status === AdStatus::Active) {
+                event(new AdWasActivated($ad));
+            }
+
+            return $ad;
         });
     }
 
@@ -59,11 +71,10 @@ final readonly class CreateAdAction
      */
     private function attributes(User $user, array $data): array
     {
-        $autoApprove = $this->settings->isEnabled(SettingKey::AutoApproveAds);
         $title = (string) $data['title'];
         $location = $data['location'] ?? null;
-
-        $window = $autoApprove ? $this->window->open() : $this->window->closed();
+        $moderation = $this->moderator->review($title, (string) $data['description']);
+        $autoApprove = $this->settings->isEnabled(SettingKey::AutoApproveAds);
 
         return [
             'user_id' => $user->id,
@@ -77,12 +88,12 @@ final readonly class CreateAdAction
             'delivery_methods' => $data['delivery_methods'] ?? [],
             'delivery_prices' => $this->pricesForChosenMethods($data),
             'location' => $location,
-            'district' => $data['district'] ?? null,
+            'latitude' => $data['latitude'] ?? null,
+            'longitude' => $data['longitude'] ?? null,
             'contact_email' => null,
             'contact_phone' => AdContactAttributes::overridePhone($data),
-            'status' => $autoApprove ? AdStatus::Active : AdStatus::Pending,
             'terms_accepted_at' => CarbonImmutable::now(),
-        ] + $window;
+        ] + $this->publication->resolveForCreate($moderation, $autoApprove);
     }
 
     /**

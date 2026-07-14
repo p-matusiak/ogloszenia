@@ -3,12 +3,13 @@ import PrimeVue from 'primevue/config'
 import { describe, expect, it } from 'vitest'
 
 import AdSearchForm from '@/components/AdSearchForm.vue'
+import { createTestI18n } from '@/testing/i18n'
 
 function mountForm(query = '') {
   return mount(AdSearchForm, {
     props: { query },
     global: {
-      plugins: [PrimeVue],
+      plugins: [PrimeVue, createTestI18n()],
     },
   })
 }

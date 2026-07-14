@@ -76,8 +76,47 @@ final class AdFactory extends Factory
     {
         return $this->state(fn (array $attributes): array => [
             'status' => AdStatus::Expired,
-            'published_at' => now()->copy()->subDays(60),
-            'expires_at' => now()->copy()->subDays(30),
+            'published_at' => now()->copy()->subDays(45),
+            'expires_at' => now()->copy()->subDays(15),
+        ]);
+    }
+
+    /**
+     * Wygasłe, ale jeszcze w okresie na odświeżenie (domyślnie 30 dni po expires_at).
+     */
+    public function expiredWithinRefreshGrace(): static
+    {
+        return $this->state(fn (array $attributes): array => [
+            'status' => AdStatus::Expired,
+            'published_at' => now()->copy()->subDays(45),
+            'expires_at' => now()->copy()->subDays(15),
+        ]);
+    }
+
+    /**
+     * Wygasłe po upływie okresu na odświeżenie — kwalifikuje się do usunięcia.
+     */
+    public function expiredPastRefreshGrace(): static
+    {
+        return $this->state(fn (array $attributes): array => [
+            'status' => AdStatus::Expired,
+            'published_at' => now()->copy()->subDays(90),
+            'expires_at' => now()->copy()->subDays(60),
+        ]);
+    }
+
+    /**
+     * Wygasłe, dla którego należy wysłać ostrzeżenie przed usunięciem.
+     */
+    public function expiredDueForDeletionWarning(): static
+    {
+        $graceDays = (int) config('ads.refresh_grace_days');
+        $warningDays = (int) config('ads.deletion_warning_days');
+
+        return $this->state(fn (array $attributes): array => [
+            'status' => AdStatus::Expired,
+            'published_at' => now()->copy()->subDays($graceDays + 35),
+            'expires_at' => now()->copy()->subDays($graceDays - $warningDays + 1),
         ]);
     }
 

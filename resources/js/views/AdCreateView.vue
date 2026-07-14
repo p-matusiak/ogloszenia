@@ -5,10 +5,12 @@ import { useRouter } from 'vue-router'
 
 import { createAd } from '@/api/modules/v1/ads'
 import AdForm from '@/components/AdForm.vue'
-import { emptyAdForm, useAdSubmission } from '@/composables/useAdSubmission'
+import { emptyAdForm, prefillLocationFromUser, useAdSubmission } from '@/composables/useAdSubmission'
+import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
-const values = ref(emptyAdForm())
+const auth = useAuthStore()
+const values = ref(prefillLocationFromUser(emptyAdForm(), auth.user))
 const { errors, generalError, isSubmitting, submit } = useAdSubmission()
 
 async function onSubmit(): Promise<void> {

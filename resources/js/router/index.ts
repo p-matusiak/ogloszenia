@@ -1,6 +1,8 @@
-import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
+import { watch } from 'vue'
+import { createRouter, createWebHistory, type RouteLocationNormalized, type RouteRecordRaw } from 'vue-router'
 
 import { setDocumentTitle } from '@/composables/usePageTitle'
+import { i18n } from '@/i18n/index'
 import { useAuthStore } from '@/stores/auth'
 
 /**
@@ -13,14 +15,31 @@ declare module 'vue-router' {
     requiresAuth?: boolean
     requiresVerified?: boolean
     requiresAdmin?: boolean
-    title?: string
+    titleKey?: string
+  }
+}
+
+function syncRouteTitle(to: RouteLocationNormalized): void {
+  if (typeof to.meta.titleKey === 'string') {
+    setDocumentTitle(i18n.global.t(to.meta.titleKey))
   }
 }
 
 const routes: RouteRecordRaw[] = [
-  { path: '/', name: 'home', component: () => import('@/views/HomeView.vue') },
   {
-    // Ten sam listing co `home`, tylko z kategorią w ścieżce. Tytuł ustawia
+    path: '/',
+    name: 'landing',
+    component: () => import('@/views/LandingView.vue'),
+    meta: { titleKey: 'routes.landing' },
+  },
+  {
+    path: '/ogloszenia',
+    name: 'listings',
+    component: () => import('@/views/HomeView.vue'),
+    meta: { titleKey: 'routes.listings' },
+  },
+  {
+    // Ten sam listing co `listings`, tylko z kategorią w ścieżce. Tytuł ustawia
     // widok, gdy pozna nazwę kategorii z drzewa.
     path: '/kategoria/:slug',
     name: 'categories.show',
@@ -33,90 +52,96 @@ const routes: RouteRecordRaw[] = [
     props: true,
   },
   {
+    path: '/sprzedawca/:sellerSlug',
+    name: 'sellers.show',
+    component: () => import('@/views/SellerView.vue'),
+    props: true,
+  },
+  {
     path: '/dodaj-ogloszenie',
     name: 'ads.create',
     component: () => import('@/views/AdCreateView.vue'),
-    meta: { requiresAuth: true, requiresVerified: true, title: 'Dodaj ogłoszenie' },
+    meta: { requiresAuth: true, requiresVerified: true, titleKey: 'routes.adsCreate' },
   },
   {
     path: '/moje-ogloszenia',
     name: 'ads.mine',
     component: () => import('@/views/MyAdsView.vue'),
-    meta: { requiresAuth: true, title: 'Moje ogłoszenia' },
+    meta: { requiresAuth: true, titleKey: 'routes.adsMine' },
   },
   {
     path: '/ulubione',
     name: 'favorites',
     component: () => import('@/views/FavoritesView.vue'),
-    meta: { requiresAuth: true, title: 'Ulubione ogłoszenia' },
+    meta: { requiresAuth: true, titleKey: 'routes.favorites' },
   },
   {
     path: '/wiadomosci',
     name: 'messages',
     component: () => import('@/views/MessagesView.vue'),
-    meta: { requiresAuth: true, title: 'Wiadomości' },
+    meta: { requiresAuth: true, titleKey: 'routes.messages' },
   },
   {
     path: '/wiadomosci/:id',
     name: 'messages.show',
     component: () => import('@/views/ConversationView.vue'),
     props: true,
-    meta: { requiresAuth: true, title: 'Rozmowa' },
+    meta: { requiresAuth: true, titleKey: 'routes.conversation' },
   },
   {
     path: '/moje-ogloszenia/:slug/edytuj',
     name: 'ads.edit',
     component: () => import('@/views/AdEditView.vue'),
     props: true,
-    meta: { requiresAuth: true, requiresVerified: true, title: 'Edycja ogłoszenia' },
+    meta: { requiresAuth: true, requiresVerified: true, titleKey: 'routes.adsEdit' },
   },
   {
     path: '/profil',
     name: 'profile',
     component: () => import('@/views/ProfileView.vue'),
-    meta: { requiresAuth: true, title: 'Profil' },
+    meta: { requiresAuth: true, titleKey: 'routes.profile' },
   },
   {
     path: '/logowanie',
     name: 'login',
     component: () => import('@/views/LoginView.vue'),
-    meta: { title: 'Logowanie' },
+    meta: { titleKey: 'routes.login' },
   },
   {
     path: '/rejestracja',
     name: 'register',
     component: () => import('@/views/RegisterView.vue'),
-    meta: { title: 'Rejestracja' },
+    meta: { titleKey: 'routes.register' },
   },
   {
     path: '/weryfikacja-email',
     name: 'email.verify',
     component: () => import('@/views/EmailVerificationView.vue'),
-    meta: { title: 'Weryfikacja adresu e-mail' },
+    meta: { titleKey: 'routes.emailVerify' },
   },
   {
     path: '/regulamin',
     name: 'terms',
     component: () => import('@/views/TermsView.vue'),
-    meta: { title: 'Regulamin serwisu' },
+    meta: { titleKey: 'routes.terms' },
   },
   {
     path: '/polityka-prywatnosci',
     name: 'privacy',
     component: () => import('@/views/PrivacyView.vue'),
-    meta: { title: 'Polityka prywatności' },
+    meta: { titleKey: 'routes.privacy' },
   },
   {
     path: '/admin',
     name: 'admin',
     component: () => import('@/views/admin/AdminView.vue'),
-    meta: { requiresAuth: true, requiresAdmin: true, title: 'Panel administratora' },
+    meta: { requiresAuth: true, requiresAdmin: true, titleKey: 'routes.admin' },
   },
   {
     path: '/:pathMatch(.*)*',
     name: 'not-found',
     component: () => import('@/views/NotFoundView.vue'),
-    meta: { title: 'Nie znaleziono strony' },
+    meta: { titleKey: 'routes.notFound' },
   },
 ]
 
@@ -129,9 +154,18 @@ export const router = createRouter({
 router.beforeEach(async (to) => {
   const auth = useAuthStore()
 
-  // The session lives in an httpOnly cookie, so the only way to know who the
-  // visitor is, is to ask the server once before the first guarded route.
-  await auth.resolve()
+  const needsAuthGate =
+    to.meta.requiresAuth === true
+    || to.meta.requiresVerified === true
+    || to.meta.requiresAdmin === true
+
+  // Publiczne strony (np. detal ogłoszenia) nie muszą czekać na /auth/me —
+  // sesję sprawdzamy w tle, a przed chronioną trasą czekamy już na wynik.
+  if (needsAuthGate) {
+    await auth.resolve()
+  } else if (!auth.isResolved) {
+    void auth.resolve()
+  }
 
   if (to.meta.requiresAuth === true && !auth.isAuthenticated) {
     return { name: 'login', query: { redirect: to.fullPath } }
@@ -144,12 +178,16 @@ router.beforeEach(async (to) => {
   }
 
   if (to.meta.requiresAdmin === true && !auth.isAdmin) {
-    return { name: 'home' }
+    return { name: 'landing' }
   }
 
   return true
 })
 
 router.afterEach((to) => {
-  setDocumentTitle(to.meta.title)
+  syncRouteTitle(to)
+})
+
+watch(i18n.global.locale, () => {
+  syncRouteTitle(router.currentRoute.value)
 })

@@ -6,6 +6,7 @@ import { ref } from 'vue'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import AppHeader from '@/components/layout/AppHeader.vue'
+import { createTestI18n } from '@/testing/i18n'
 
 const push = vi.hoisted(() => vi.fn())
 const logout = vi.hoisted(() => vi.fn())
@@ -29,9 +30,16 @@ const baseUser = {
   email: 'jan@example.com',
   is_email_verified: true,
   phone: null,
+  default_location: null,
+  default_latitude: null,
+  default_longitude: null,
 }
 
-function mountHeader(options?: { isAdmin?: boolean; authenticated?: boolean }) {
+function mountHeader(options?: {
+  isAdmin?: boolean
+  authenticated?: boolean
+  filters?: Record<string, unknown>
+}) {
   const pinia = createTestingPinia({
     createSpy: vi.fn,
     stubActions: false,
@@ -47,11 +55,12 @@ function mountHeader(options?: { isAdmin?: boolean; authenticated?: boolean }) {
   setActivePinia(pinia)
 
   return mount(AppHeader, {
-    props: { filters: {} },
+    props: { filters: options?.filters ?? {} },
     global: {
-      plugins: [PrimeVue, pinia],
+      plugins: [PrimeVue, createTestI18n(), pinia],
       stubs: {
         RouterLink: { template: '<a><slot /></a>' },
+        LanguageSwitcher: true,
       },
     },
   })
@@ -71,6 +80,20 @@ describe('AppHeader', () => {
     await wrapper.find('input[aria-label="Czego szukasz?"]').setValue('rower')
 
     expect(push).not.toHaveBeenCalled()
+  })
+
+  it('pokazuje przyciski logowania i rejestracji gościowi', () => {
+    const wrapper = mountHeader()
+
+    expect(wrapper.text()).toContain('Zaloguj się')
+    expect(wrapper.text()).toContain('Załóż konto')
+  })
+
+  it('nie pokazuje przycisków logowania zalogowanemu użytkownikowi', () => {
+    const wrapper = mountHeader({ authenticated: true })
+
+    expect(wrapper.text()).not.toContain('Zaloguj się')
+    expect(wrapper.text()).not.toContain('Załóż konto')
   })
 
   it('nie pokazuje panelu admina gościowi', () => {
@@ -100,9 +123,24 @@ describe('AppHeader', () => {
     expect(push).toHaveBeenCalledOnce()
     expect(push).toHaveBeenCalledWith(
       expect.objectContaining({
-        name: 'home',
+        name: 'listings',
         query: expect.objectContaining({ q: 'rower', sort: 'relevance' }),
       }),
     )
+  })
+
+  it('nie ma pola lokalizacji — tylko fraza wyszukiwania', () => {
+    const wrapper = mountHeader()
+
+    expect(wrapper.find('input[aria-label="Lokalizacja"]').exists()).toBe(false)
+    expect(wrapper.find('input[aria-label="Czego szukasz?"]').exists()).toBe(true)
+  })
+
+  it('ma kompaktowe klasy akcji dla wąskiego nagłówka', () => {
+    const wrapper = mountHeader({ authenticated: true, isAdmin: true })
+
+    expect(wrapper.find('.actions__logout').exists()).toBe(true)
+    expect(wrapper.find('.actions__admin').exists()).toBe(true)
+    expect(wrapper.find('.actions__profile-name').exists()).toBe(true)
   })
 })

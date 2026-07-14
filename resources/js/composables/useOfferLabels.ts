@@ -1,19 +1,5 @@
+import { i18n } from '@/i18n/index'
 import type { AdCondition, DeliveryMethod } from '@/types/api'
-
-/** Jedno źródło polskich nazw dla wartości enumów z backendu. */
-const DELIVERY_LABELS: Record<DeliveryMethod, string> = {
-  personal: 'Odbiór osobisty',
-  courier: 'Kurier',
-  parcel_locker: 'Paczkomat',
-  post: 'Poczta',
-  local: 'Dostawa lokalna',
-}
-
-const CONDITION_LABELS: Record<AdCondition, string> = {
-  new: 'Nowe',
-  used: 'Używane',
-  damaged: 'Uszkodzone',
-}
 
 /** Kolejność jak w sidebarze makiety, nie kolejność z bazy. */
 export const DELIVERY_ORDER: readonly DeliveryMethod[] = [
@@ -26,12 +12,35 @@ export const DELIVERY_ORDER: readonly DeliveryMethod[] = [
 
 export const CONDITION_ORDER: readonly AdCondition[] = ['new', 'used', 'damaged']
 
+export const DELIVERY_ICONS: Record<DeliveryMethod, string> = {
+  personal: 'pi pi-home',
+  courier: 'pi pi-truck',
+  parcel_locker: 'pi pi-box',
+  post: 'pi pi-envelope',
+  local: 'pi pi-car',
+}
+
+const FREE_DELIVERY_METHODS: readonly DeliveryMethod[] = ['personal']
+
 export function deliveryLabel(method: DeliveryMethod): string {
-  return DELIVERY_LABELS[method]
+  return i18n.global.t(`offers.delivery.${method}`)
+}
+
+export function deliveryIcon(method: DeliveryMethod): string {
+  return DELIVERY_ICONS[method]
+}
+
+/** Kolejność z makiety, nie kolejność zapisana w ogłoszeniu. */
+export function deliveryMethodsInOrder(methods: readonly DeliveryMethod[]): DeliveryMethod[] {
+  return DELIVERY_ORDER.filter((method) => methods.includes(method))
+}
+
+export function isFreeDeliveryMethod(method: DeliveryMethod): boolean {
+  return FREE_DELIVERY_METHODS.includes(method)
 }
 
 export function conditionLabel(condition: AdCondition): string {
-  return CONDITION_LABELS[condition]
+  return i18n.global.t(`offers.condition.${condition}`)
 }
 
 /** „Paczkomat, Kurier, Odbiór osobisty” — jedna plakietka, nie pięć. */
@@ -52,7 +61,6 @@ export function serialiseList(values: readonly string[]): string | undefined {
   return values.length > 0 ? values.join(',') : undefined
 }
 
-/** „Warszawa, Mokotów” — bez osieroconego przecinka, gdy dzielnicy brak. */
-export function locationLabel(city: string | null, district: string | null): string {
-  return [city, district].filter(Boolean).join(', ')
+export function locationLabel(location: string | null): string {
+  return location ?? ''
 }

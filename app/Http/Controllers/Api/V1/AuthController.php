@@ -4,14 +4,17 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Actions\Auth\DeleteAccountAction;
 use App\Actions\Auth\RegisterUserAction;
 use App\Actions\Auth\UpdateProfileAction;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Auth\DeleteAccountRequest;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\RegisterRequest;
 use App\Http\Requests\Auth\UpdateProfileRequest;
 use App\Http\Resources\UserResource;
 use App\Models\User;
+use App\Repositories\Contracts\UserRepository;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
@@ -24,6 +27,8 @@ final class AuthController extends Controller
     public function __construct(
         private readonly RegisterUserAction $registerUser,
         private readonly UpdateProfileAction $updateProfile,
+        private readonly DeleteAccountAction $deleteAccount,
+        private readonly UserRepository $users,
     ) {}
 
     public function register(RegisterRequest $request): JsonResponse
@@ -83,15 +88,30 @@ final class AuthController extends Controller
 
         // Reload so every column is present: actingAs() and the session guard
         // both hand over models that never went through a full select.
-        $user = User::query()->findOrFail($user->id);
+        $user = $this->users->findOrFailById($user->id);
 
         $avatar = $request->file('avatar');
 
         return new UserResource($this->updateProfile->execute(
             user: $user,
-            data: $request->safe()->only(['name', 'email', 'phone', 'bio']),
+            data: $request->safe()->only(['name', 'phone', 'bio']),
             avatar: $avatar instanceof UploadedFile ? $avatar : null,
             removeAvatar: $request->boolean('remove_avatar'),
         ));
+    }
+
+    public function deleteAccount(DeleteAccountRequest $request): Response
+    {
+        $user = $request->user();
+        assert($user instanceof User);
+
+        $this->deleteAccount->execute($this->users->findOrFailById($user->id));
+
+        Auth::guard('web')->logout();
+
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+
+        return response()->noContent();
     }
 }

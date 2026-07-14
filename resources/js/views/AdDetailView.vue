@@ -2,26 +2,32 @@
 import Dialog from 'primevue/dialog'
 import Message from 'primevue/message'
 
-import { computed, onMounted, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 
 import { errorMessage } from '@/api/client'
-import { fetchAd } from '@/api/modules/v1/ads'
+import { fetchAd, fetchMoreFromSeller } from '@/api/modules/v1/ads'
+import { listingLocation } from '@/composables/useRouteFilters'
 import AdReportPanel from '@/components/AdReportPanel.vue'
 import SendMessagePanel from '@/components/messages/SendMessagePanel.vue'
 import AdDetailSkeleton from '@/components/ads/AdDetailSkeleton.vue'
 import FavoriteButton from '@/components/ads/FavoriteButton.vue'
 import AdGallery from '@/components/ads/AdGallery.vue'
+import AdCard from '@/components/ads/AdCard.vue'
+import AdDeliveryPanel from '@/components/ads/AdDeliveryPanel.vue'
 import AdMetaPanel from '@/components/ads/AdMetaPanel.vue'
 import SellerCard from '@/components/ads/SellerCard.vue'
 import { formatPrice } from '@/composables/useFormatting'
 import { locationLabel } from '@/composables/useOfferLabels'
 import { setDocumentTitle } from '@/composables/usePageTitle'
 import { useAuthStore } from '@/stores/auth'
-import type { Ad, Category } from '@/types/api'
+import type { Ad, AdSummary, Category } from '@/types/api'
 
 const props = defineProps<{ slug: string }>()
 
 const auth = useAuthStore()
+const router = useRouter()
+const route = useRoute()
 
 const ad = ref<Ad | null>(null)
 const isLoading = ref(true)
@@ -47,28 +53,70 @@ const isDescriptionLong = computed(() => (ad.value?.description.length ?? 0) > D
 /** Serduszko pokazujemy na aktywnym ogłoszeniu; gość po kliknięciu trafia na logowanie. */
 const showFavorite = computed(() => ad.value?.status === 'active')
 
-/** Napisać do sprzedającego można tylko na aktywnym, cudzym ogłoszeniu. */
-const canMessage = computed(
-  () =>
-    auth.isAuthenticated &&
-    ad.value?.status === 'active' &&
-    ad.value.is_own === false,
+/** Przycisk wiadomości na aktywnym, cudzym ogłoszeniu — gość trafia na logowanie. */
+const showMessage = computed(
+  () => ad.value?.status === 'active' && ad.value.is_own === false,
 )
 
-onMounted(async () => {
+async function onMessageClick(): Promise<void> {
+  if (!auth.isAuthenticated) {
+    await router.push({ name: 'login', query: { redirect: route.fullPath } })
+    return
+  }
+
+  isMessageOpen.value = true
+}
+
+const moreFromSeller = ref<AdSummary[]>([])
+
+const showMoreFromSeller = computed(
+  () => moreFromSeller.value.length > 0 && ad.value?.seller?.slug,
+)
+
+const deliveryMethods = computed(() => ad.value?.delivery_methods ?? [])
+
+const deliveryPrices = computed(() => ad.value?.delivery_prices ?? {})
+
+async function loadMoreFromSeller(slug: string): Promise<void> {
   try {
-    ad.value = await fetchAd(props.slug)
+    moreFromSeller.value = await fetchMoreFromSeller(slug)
+  } catch {
+    moreFromSeller.value = []
+  }
+}
+
+async function loadAd(slug: string): Promise<void> {
+  isLoading.value = true
+  loadError.value = null
+  isDescriptionExpanded.value = false
+  isReportOpen.value = false
+  isMessageOpen.value = false
+  moreFromSeller.value = []
+  ad.value = null
+
+  try {
+    const loaded = await fetchAd(slug)
+    ad.value = loaded
     // Router nie zna tytułu ogłoszenia — zna go dopiero odpowiedź API. Kształt
     // „tytuł – lokalizacja” odwzorowuje `AdSeoText::title()` z backendu.
     setDocumentTitle(
-      ad.value.location ? `${ad.value.title} – ${ad.value.location}` : ad.value.title,
+      loaded.location ? `${loaded.title} – ${loaded.location}` : loaded.title,
     )
+
+    if (loaded.status === 'active') {
+      void loadMoreFromSeller(slug)
+    }
   } catch (caught: unknown) {
     loadError.value = errorMessage(caught, 'Nie znaleziono ogłoszenia.')
   } finally {
     isLoading.value = false
   }
-})
+}
+
+/** Ta sama trasa `ads.show` — bez watcha klik w „Więcej od sprzedawcy” nie odświeży widoku. */
+watch(() => props.slug, (slug) => {
+  void loadAd(slug)
+}, { immediate: true })
 </script>
 
 <template>
@@ -81,12 +129,15 @@ onMounted(async () => {
     {{ loadError ?? 'Nie znaleziono ogłoszenia.' }}
   </Message>
 
-  <article v-else>
+  <article
+    v-else
+    class="detail-page"
+  >
     <nav
       class="crumbs"
       aria-label="Ścieżka kategorii"
     >
-      <RouterLink :to="{ name: 'home' }">
+      <RouterLink :to="{ name: 'listings' }">
         Strona główna
       </RouterLink>
       <template
@@ -94,7 +145,7 @@ onMounted(async () => {
         :key="node.id"
       >
         <span aria-hidden="true">›</span>
-        <RouterLink :to="{ name: 'home', query: { category: node.slug } }">
+        <RouterLink :to="listingLocation({ category: node.slug })">
           {{ node.name }}
         </RouterLink>
       </template>
@@ -127,8 +178,14 @@ onMounted(async () => {
             v-if="ad.location"
             class="detail__location"
           >
-            <i class="pi pi-map-marker" />{{ locationLabel(ad.location, ad.district) }}
+            <i class="pi pi-map-marker" />{{ locationLabel(ad.location) }}
           </p>
+
+          <AdDeliveryPanel
+            :methods="deliveryMethods"
+            :prices="deliveryPrices"
+            class="detail__delivery detail__delivery--main"
+          />
 
           <h2 class="detail__legend">
             Opis
@@ -156,8 +213,14 @@ onMounted(async () => {
           :seller="ad.seller"
           :has-phone="ad.has_phone"
           :masked-phone="ad.contact_phone_masked"
-          :can-message="canMessage"
-          @message="isMessageOpen = true"
+          :show-message="showMessage"
+          @message="onMessageClick"
+        />
+
+        <AdDeliveryPanel
+          :methods="deliveryMethods"
+          :prices="deliveryPrices"
+          class="detail__delivery detail__delivery--side"
         />
 
         <AdMetaPanel
@@ -168,6 +231,31 @@ onMounted(async () => {
         />
       </aside>
     </div>
+
+    <section
+      v-if="showMoreFromSeller"
+      class="more-seller surface"
+    >
+      <div class="more-seller__head">
+        <h2 class="more-seller__title">
+          Więcej od {{ ad.seller?.name }}
+        </h2>
+        <RouterLink
+          :to="{ name: 'sellers.show', params: { sellerSlug: ad.seller?.slug ?? '' } }"
+          class="more-seller__all"
+        >
+          Zobacz wszystkie
+        </RouterLink>
+      </div>
+
+      <div class="more-seller__grid">
+        <AdCard
+          v-for="item in moreFromSeller"
+          :key="item.id"
+          :ad="item"
+        />
+      </div>
+    </section>
 
     <Dialog
       v-model:visible="isReportOpen"
@@ -196,6 +284,12 @@ onMounted(async () => {
 </template>
 
 <style scoped>
+.detail-page {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: clip;
+}
+
 .crumbs {
   display: flex;
   flex-wrap: wrap;
@@ -251,9 +345,11 @@ onMounted(async () => {
 
 .detail__headline {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
+  min-width: 0;
 }
 
 .detail__price {
@@ -283,6 +379,7 @@ onMounted(async () => {
   margin: 0;
   white-space: pre-line;
   line-height: 1.7;
+  overflow-wrap: anywhere;
 }
 
 .detail__description--clamped {
@@ -307,5 +404,72 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   gap: var(--stack-gap);
+}
+
+.detail__delivery--main {
+  display: block;
+}
+
+.detail__delivery--side {
+  display: none;
+}
+
+@media (width >= 62rem) {
+  .detail__delivery--main {
+    display: none;
+  }
+
+  .detail__delivery--side {
+    display: block;
+  }
+}
+
+.more-seller {
+  margin-top: var(--stack-gap);
+  padding: var(--card-padding);
+}
+
+.more-seller__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.more-seller__title {
+  margin: 0;
+  font-size: var(--title-card);
+  font-weight: 700;
+}
+
+.more-seller__all {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--p-primary-color);
+  text-decoration: none;
+}
+
+.more-seller__all:hover {
+  text-decoration: underline;
+}
+
+.more-seller__grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+}
+
+@media (width >= 36rem) {
+  .more-seller__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (width >= 62rem) {
+  .more-seller__grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
 }
 </style>

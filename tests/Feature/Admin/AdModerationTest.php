@@ -6,14 +6,19 @@ use App\Enums\AdStatus;
 use App\Enums\SettingKey;
 use App\Models\Ad;
 use App\Models\User;
+use App\Notifications\AdActivated;
 use App\Services\Contracts\SettingsRepository;
+use Illuminate\Support\Facades\Notification;
 
 beforeEach(function (): void {
     $this->admin = User::factory()->admin()->create();
 });
 
 it('publishes a pending ad on approval', function (): void {
-    $ad = Ad::factory()->pending()->create();
+    Notification::fake();
+
+    $seller = User::factory()->create();
+    $ad = Ad::factory()->for($seller)->pending()->create();
 
     $this->actingAs($this->admin)
         ->postJson("/api/v1/admin/ads/{$ad->slug}/approve")
@@ -25,6 +30,8 @@ it('publishes a pending ad on approval', function (): void {
         ->and($ad->expires_at?->isFuture())->toBeTrue();
 
     $this->getJson('/api/v1/ads')->assertJsonCount(1, 'data');
+
+    Notification::assertSentTo($seller, AdActivated::class);
 });
 
 it('records why an ad was rejected', function (): void {

@@ -14,7 +14,7 @@ final class UpdateProfileAction
     public function __construct(private readonly UserRepository $users) {}
 
     /**
-     * @param  array<string, mixed>  $data  Validated name, email and bio.
+     * @param  array<string, mixed>  $data  Validated name, phone and bio.
      */
     public function execute(
         User $user,
@@ -22,32 +22,10 @@ final class UpdateProfileAction
         ?UploadedFile $avatar = null,
         bool $removeAvatar = false,
     ): User {
-        $newEmail = isset($data['email']) ? (string) $data['email'] : $user->email;
-        $emailChanged = $newEmail !== $user->email;
-
-        $user = $this->users->updateAttributes(
+        return $this->users->updateAttributes(
             $user,
             $data + $this->avatarAttributes($user, $avatar, $removeAvatar),
         );
-
-        if ($emailChanged) {
-            $this->requireVerificationOfNewAddress($user);
-        }
-
-        return $user;
-    }
-
-    /**
-     * A confirmed address does not vouch for the one that replaced it, so the
-     * account drops back to unverified and a fresh link goes out.
-     */
-    private function requireVerificationOfNewAddress(User $user): void
-    {
-        // email_verified_at is deliberately not fillable: only this path may
-        // clear it, and only the signed activation link may set it.
-        $this->users->clearEmailVerification($user);
-
-        $user->sendEmailVerificationNotification();
     }
 
     /**

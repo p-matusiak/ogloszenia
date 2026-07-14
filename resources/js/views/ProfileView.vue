@@ -5,31 +5,34 @@ import FileUpload from 'primevue/fileupload'
 import InputText from 'primevue/inputtext'
 import Message from 'primevue/message'
 import Textarea from 'primevue/textarea'
+import { useConfirm } from 'primevue/useconfirm'
 import { storeToRefs } from 'pinia'
 import { computed, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 
 import { errorMessage, validationErrors } from '@/api/client'
 import AccountVerificationStatus from '@/components/auth/AccountVerificationStatus.vue'
 import { useAuthStore } from '@/stores/auth'
 
 const auth = useAuthStore()
+const router = useRouter()
+const confirm = useConfirm()
 const { user } = storeToRefs(auth)
 
 const name = ref('')
-const email = ref('')
 const phone = ref('')
 const bio = ref('')
 const avatarFile = ref<File | null>(null)
 const removeAvatar = ref(false)
 const errors = ref<Record<string, string>>({})
 const generalError = ref<string | null>(null)
+const deleteError = ref<string | null>(null)
 const previewUrl = ref<string | null>(null)
 
 watch(
   user,
   (next) => {
     name.value = next?.name ?? ''
-    email.value = next?.email ?? ''
     phone.value = next?.phone ?? ''
     bio.value = next?.bio ?? ''
     if (avatarFile.value === null) {
@@ -37,11 +40,6 @@ watch(
     }
   },
   { immediate: true },
-)
-
-/** Warns before the save, not after: the change costs the user their verification. */
-const willRequireReverification = computed(
-  () => user.value?.is_email_verified === true && email.value !== user.value.email,
 )
 
 const initials = computed(() =>
@@ -74,7 +72,6 @@ async function onSubmit(): Promise<void> {
   try {
     await auth.updateProfile({
       name: name.value,
-      email: email.value,
       phone: phone.value,
       bio: bio.value,
       avatar: avatarFile.value,
@@ -92,6 +89,40 @@ async function onSubmit(): Promise<void> {
     } else {
       generalError.value = errorMessage(caught, 'Nie udało się zapisać profilu.')
     }
+  }
+}
+
+function confirmDeleteAccount(): void {
+  deleteError.value = null
+
+  confirm.require({
+    header: 'Usunąć konto?',
+    message:
+      'Konto zostanie dezaktywowane, a Twoje ogłoszenia znikną z serwisu. Tej operacji nie można cofnąć z poziomu profilu.',
+    icon: 'pi pi-exclamation-triangle',
+    rejectLabel: 'Anuluj',
+    acceptLabel: 'Usuń konto',
+    rejectProps: {
+      label: 'Anuluj',
+      severity: 'secondary',
+      outlined: true,
+    },
+    acceptProps: {
+      label: 'Usuń konto',
+      severity: 'danger',
+    },
+    accept: () => void deleteAccount(),
+  })
+}
+
+async function deleteAccount(): Promise<void> {
+  deleteError.value = null
+
+  try {
+    await auth.deleteAccount()
+    await router.push({ name: 'landing' })
+  } catch (caught: unknown) {
+    deleteError.value = errorMessage(caught, 'Nie udało się usunąć konta.')
   }
 }
 </script>
@@ -179,6 +210,30 @@ async function onSubmit(): Promise<void> {
             @click="clearAvatar"
           />
         </aside>
+
+        <section class="profile__card profile__card--aside profile__danger-zone">
+          <h2>Usuń konto</h2>
+          <p>
+            Dezaktywuje konto i usuwa Twoje ogłoszenia z serwisu. Adres e-mail zwolnimy do ponownej rejestracji.
+          </p>
+
+          <Message
+            v-if="deleteError"
+            severity="error"
+            size="small"
+          >
+            {{ deleteError }}
+          </Message>
+
+          <Button
+            label="Usuń konto"
+            icon="pi pi-trash"
+            severity="danger"
+            outlined
+            :loading="auth.isLoading"
+            @click="confirmDeleteAccount"
+          />
+        </section>
       </div>
 
       <form
@@ -220,22 +275,12 @@ async function onSubmit(): Promise<void> {
         <label class="field">
           <span class="field__label">E-mail</span>
           <InputText
-            v-model="email"
+            :model-value="user?.email ?? ''"
             type="email"
-            :invalid="Boolean(errors.email)"
+            readonly
+            disabled
           />
-          <small
-            v-if="errors.email"
-            class="field__error"
-          >{{ errors.email }}</small>
-          <Message
-            v-if="willRequireReverification"
-            severity="warn"
-            size="small"
-            variant="simple"
-          >
-            Zmiana adresu cofnie potwierdzenie konta. Na nowy adres wyślemy link aktywacyjny.
-          </Message>
+          <small>Adres e-mail jest powiązany z aktywacją konta i nie może być zmieniany w profilu.</small>
         </label>
 
         <label class="field">
@@ -343,7 +388,6 @@ async function onSubmit(): Promise<void> {
   gap: 1.25rem;
 }
 
-/* Status i avatar dzielą jedną kolumnę, żeby siatka pozostała dwukolumnowa. */
 .profile__aside {
   display: flex;
   flex-direction: column;
@@ -358,6 +402,10 @@ async function onSubmit(): Promise<void> {
   display: flex;
   flex-direction: column;
   gap: 1rem;
+}
+
+.profile__danger-zone {
+  border-color: color-mix(in srgb, var(--p-red-500) 35%, var(--surface-border) 65%);
 }
 
 .profile__avatar-preview {
@@ -387,6 +435,12 @@ async function onSubmit(): Promise<void> {
 
 .field__label {
   font-weight: 600;
+}
+
+.field small {
+  color: var(--text-muted);
+  font-size: 0.8125rem;
+  line-height: 1.4;
 }
 
 .field__error {

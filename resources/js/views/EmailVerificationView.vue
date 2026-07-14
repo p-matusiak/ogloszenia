@@ -51,7 +51,7 @@ onMounted(async () => {
       v-if="copy.tone === 'success'"
       label="Przejdź do ogłoszeń"
       fluid
-      @click="router.push({ name: 'home' })"
+      @click="router.push({ name: 'landing' })"
     />
 
     <Button

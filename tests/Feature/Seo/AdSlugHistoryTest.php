@@ -18,7 +18,8 @@ function adEditPayload(Ad $ad, array $overrides = []): array
         'category_id' => $ad->category_id,
         'price' => 100,
         'location' => $ad->location,
-
+        'latitude' => $ad->latitude === null ? null : (float) $ad->latitude,
+        'longitude' => $ad->longitude === null ? null : (float) $ad->longitude,
         'accept_terms' => true,
     ], $overrides);
 }
@@ -28,6 +29,8 @@ function adWithSlug(User $author, string $slug): Ad
     return Ad::factory()->for($author)->create([
         'title' => 'Rower gorski',
         'location' => 'Warszawa',
+        'latitude' => 52.2297,
+        'longitude' => 21.0122,
         'slug' => $slug,
     ]);
 }

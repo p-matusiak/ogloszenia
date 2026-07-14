@@ -6,8 +6,8 @@ namespace App\Http\Requests\Ads;
 
 use App\Enums\AdCondition;
 use App\Enums\DeliveryMethod;
-use App\Models\Category;
 use App\Models\User;
+use App\Repositories\Contracts\CategoryRepository;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Config;
@@ -63,7 +63,8 @@ class StoreAdRequest extends FormRequest
             'condition' => ['nullable', Rule::enum(AdCondition::class)],
 
             'location' => ['nullable', 'string', 'max:120'],
-            'district' => ['nullable', 'string', 'max:80'],
+            'latitude' => ['nullable', 'required_with:location,longitude', 'numeric', 'between:-90,90'],
+            'longitude' => ['nullable', 'required_with:location,latitude', 'numeric', 'between:-180,180'],
 
             'delivery_methods' => ['array'],
             'delivery_methods.*' => [Rule::enum(DeliveryMethod::class)],
@@ -103,13 +104,14 @@ class StoreAdRequest extends FormRequest
             return;
         }
 
-        $category = Category::query()->find($this->integer('category_id'));
+        $categories = app(CategoryRepository::class);
+        $category = $categories->findById($this->integer('category_id'));
 
         if ($category === null) {
             return;
         }
 
-        if ($category->children()->exists()) {
+        if ($categories->hasChildren($category->id)) {
             $validator->errors()->add('category_id', 'Choose a subcategory, not a top-level category.');
         }
     }

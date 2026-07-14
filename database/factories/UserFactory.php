@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Database\Factories;
 
 use App\Models\User;
+use App\Support\SellerSlugGenerator;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -15,6 +16,21 @@ use Illuminate\Support\Str;
 final class UserFactory extends Factory
 {
     protected static ?string $password;
+
+    public function configure(): static
+    {
+        return $this->afterMaking(function (User $user): void {
+            $slug = $user->getAttributes()['slug'] ?? null;
+
+            if (is_string($slug) && $slug !== '') {
+                return;
+            }
+
+            $user->forceFill([
+                'slug' => app(SellerSlugGenerator::class)->generate($user->name, $user->id),
+            ]);
+        });
+    }
 
     /**
      * @return array<string, mixed>
@@ -32,6 +48,9 @@ final class UserFactory extends Factory
             'avatar_path' => null,
             'bio' => null,
             'phone' => null,
+            'default_location' => null,
+            'default_latitude' => null,
+            'default_longitude' => null,
             'is_admin' => false,
             'remember_token' => Str::random(10),
         ];

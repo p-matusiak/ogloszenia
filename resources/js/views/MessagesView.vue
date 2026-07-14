@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import Avatar from 'primevue/avatar'
 import Button from 'primevue/button'
 import { storeToRefs } from 'pinia'
 import { onMounted } from 'vue'
@@ -59,12 +60,21 @@ onMounted(() => void store.loadConversations())
             class="inbox__row"
             :class="{ 'inbox__row--unread': conversation.is_unread }"
           >
-            <div
+            <Avatar
+              v-if="conversation.other_party?.avatar_url"
+              :image="conversation.other_party.avatar_url"
+              :alt="conversation.other_party.name"
+              shape="circle"
+              size="large"
               class="inbox__avatar"
-              aria-hidden="true"
-            >
-              {{ participantInitials(conversation.other_party?.name ?? '?') }}
-            </div>
+            />
+            <Avatar
+              v-else
+              :label="participantInitials(conversation.other_party?.name ?? '?')"
+              shape="circle"
+              size="large"
+              class="inbox__avatar inbox__avatar--fallback"
+            />
 
             <div class="inbox__body">
               <div class="inbox__top">
@@ -187,15 +197,12 @@ onMounted(() => void store.loadConversations())
 }
 
 .inbox__avatar {
-  display: grid;
-  place-items: center;
-  width: 2.5rem;
-  height: 2.5rem;
   flex-shrink: 0;
-  border-radius: 50%;
+}
+
+.inbox__avatar--fallback {
   background: color-mix(in srgb, var(--p-primary-color) 14%, transparent);
   color: var(--p-primary-color);
-  font-size: 0.8125rem;
   font-weight: 700;
 }
 

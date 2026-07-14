@@ -23,6 +23,7 @@ final class MessageParticipantResource extends JsonResource
         return [
             'id' => $this->id,
             'name' => $this->name,
+            'avatar_url' => $this->avatarUrl(),
         ];
     }
 }

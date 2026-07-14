@@ -2,7 +2,7 @@
 import { computed, watch } from 'vue'
 
 import MoneyInput from '@/components/form/MoneyInput.vue'
-import { DELIVERY_ORDER, deliveryLabel } from '@/composables/useOfferLabels'
+import { DELIVERY_ORDER, deliveryIcon, deliveryLabel } from '@/composables/useOfferLabels'
 import type { DeliveryMethod } from '@/types/api'
 
 type DeliveryPrices = Partial<Record<DeliveryMethod, string>>
@@ -21,14 +21,6 @@ const props = defineProps<{
 const emit = defineEmits<{
   change: [value: { methods: DeliveryMethod[]; prices: DeliveryPrices }]
 }>()
-
-const icons: Record<DeliveryMethod, string> = {
-  personal: 'pi pi-home',
-  courier: 'pi pi-truck',
-  parcel_locker: 'pi pi-box',
-  post: 'pi pi-envelope',
-  local: 'pi pi-car',
-}
 
 const hints: Record<DeliveryMethod, string> = {
   personal: 'Kupujący odbierze przedmiot osobiście, bez opłaty.',
@@ -142,7 +134,7 @@ function setPrice(method: DeliveryMethod, value: string): void {
           </span>
 
           <i
-            :class="icons[method]"
+            :class="deliveryIcon(method)"
             class="option__icon"
             aria-hidden="true"
           />
@@ -182,7 +174,7 @@ function setPrice(method: DeliveryMethod, value: string): void {
               class="prices__name"
             >
               <i
-                :class="icons[method]"
+                :class="deliveryIcon(method)"
                 aria-hidden="true"
               />
               {{ deliveryLabel(method) }}

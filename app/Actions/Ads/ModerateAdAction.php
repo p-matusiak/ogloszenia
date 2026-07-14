@@ -5,12 +5,17 @@ declare(strict_types=1);
 namespace App\Actions\Ads;
 
 use App\Enums\AdStatus;
+use App\Events\AdWasActivated;
 use App\Models\Ad;
+use App\Repositories\Contracts\AdRepository;
 use App\Support\AdPublicationWindow;
 
 final readonly class ModerateAdAction
 {
-    public function __construct(private AdPublicationWindow $window) {}
+    public function __construct(
+        private AdRepository $ads,
+        private AdPublicationWindow $window,
+    ) {}
 
     public function approve(Ad $ad): Ad
     {
@@ -19,9 +24,11 @@ final readonly class ModerateAdAction
             'rejection_reason' => null,
         ] + $this->window->open());
 
-        $ad->save();
+        $saved = $this->ads->save($ad);
 
-        return $ad;
+        event(new AdWasActivated($saved));
+
+        return $saved;
     }
 
     public function reject(Ad $ad, string $reason): Ad
@@ -31,8 +38,6 @@ final readonly class ModerateAdAction
             'rejection_reason' => $reason,
         ] + $this->window->closed());
 
-        $ad->save();
-
-        return $ad;
+        return $this->ads->save($ad);
     }
 }

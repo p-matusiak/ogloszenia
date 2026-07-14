@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import AdBadge from '@/components/ads/AdBadge.vue'
+import DeliveryMethodIcons from '@/components/ads/DeliveryMethodIcons.vue'
 import { formatAddedAt, formatPrice } from '@/composables/useFormatting'
-import { deliverySummary, locationLabel } from '@/composables/useOfferLabels'
+import { locationLabel } from '@/composables/useOfferLabels'
 import type { AdSummary } from '@/types/api'
 
 defineProps<{ ad: AdSummary }>()
@@ -50,18 +51,15 @@ defineProps<{ ad: AdSummary }>()
         data-testid="location"
         class="row__location"
       >
-        <i class="pi pi-map-marker" />{{ locationLabel(ad.location, ad.district) }}
+        <i class="pi pi-map-marker" />{{ locationLabel(ad.location) }}
       </p>
 
-      <p
+      <DeliveryMethodIcons
         v-if="ad.delivery_methods.length > 0"
+        :methods="ad.delivery_methods"
+        compact
         class="row__delivery"
-      >
-        <AdBadge
-          :label="deliverySummary(ad.delivery_methods)"
-          tone="success"
-        />
-      </p>
+      />
 
       <p class="row__added">
         {{ formatAddedAt(ad.published_at) }}
@@ -73,7 +71,10 @@ defineProps<{ ad: AdSummary }>()
 <style scoped>
 .row {
   display: flex;
+  align-items: flex-start;
   gap: 1.125rem;
+  min-width: 0;
+  max-width: 100%;
   padding: var(--card-padding);
   text-decoration: none;
   color: inherit;
@@ -152,7 +153,6 @@ defineProps<{ ad: AdSummary }>()
 }
 
 .row__location,
-.row__delivery,
 .row__added {
   margin: 0;
   font-size: 0.8125rem;
@@ -165,8 +165,12 @@ defineProps<{ ad: AdSummary }>()
   gap: 0.35rem;
 }
 
+.row__delivery {
+  margin-top: -0.125rem;
+}
+
 .row__added {
-  margin-top: 0.125rem;
+  margin-top: auto;
   font-size: 0.75rem;
 }
 </style>

@@ -10,10 +10,7 @@ const props = defineProps<{ values: AdFormValues; previewImage: string | null }>
 
 const price = computed(() => (props.values.price === null ? null : props.values.price))
 
-/** „Warszawa, Mokotów” — bez osieroconego przecinka, gdy dzielnicy brak. */
-const locationLabel = computed(() =>
-  [props.values.location, props.values.district].filter(Boolean).join(', '),
-)
+const locationLabel = computed(() => props.values.location)
 
 /**
  * Plakietka z ceną tylko wtedy, gdy autor ją podał. Metoda wybrana bez ceny

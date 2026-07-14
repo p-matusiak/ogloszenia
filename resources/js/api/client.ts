@@ -1,5 +1,6 @@
 import axios, { type AxiosInstance, AxiosError } from 'axios'
 
+import { i18n } from '@/i18n/index'
 import type { ApiErrorBody, ValidationErrorBody } from '@/types/api'
 
 export const HTTP_UNAUTHORIZED = 401
@@ -70,14 +71,14 @@ export function domainError(error: unknown): ApiErrorBody | null {
   return null
 }
 
-export function errorMessage(error: unknown, fallback = 'Wystąpił nieoczekiwany błąd.'): string {
+export function errorMessage(error: unknown, fallback = i18n.global.t('errors.unexpected')): string {
   const domain = domainError(error)
   if (domain) {
     return domain.message
   }
 
   if (error instanceof AxiosError && error.response?.status === HTTP_FORBIDDEN) {
-    return 'Nie masz uprawnień do tej operacji.'
+    return i18n.global.t('errors.forbidden')
   }
 
   return fallback

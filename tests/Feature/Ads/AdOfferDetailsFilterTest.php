@@ -70,6 +70,18 @@ it('exposes the delivery methods on the listing payload', function (): void {
         ->assertJsonPath('data.0.delivery_methods', ['courier']);
 });
 
+it('exposes delivery methods and prices on the ad detail payload', function (): void {
+    $ad = Ad::factory()->create([
+        'delivery_methods' => [DeliveryMethod::Personal->value, DeliveryMethod::Courier->value],
+        'delivery_prices' => [DeliveryMethod::Courier->value => '18.99'],
+    ]);
+
+    $this->getJson("/api/v1/ads/{$ad->slug}")
+        ->assertOk()
+        ->assertJsonPath('data.delivery_methods', ['personal', 'courier'])
+        ->assertJsonPath('data.delivery_prices.courier', '18.99');
+});
+
 it('rejects an unknown condition or delivery method', function (): void {
     $this->getJson('/api/v1/ads?condition=zepsute')
         ->assertUnprocessable()
@@ -98,7 +110,9 @@ it('stores the negotiability, condition and delivery chosen in the form', functi
         'condition' => 'used',
         'delivery_methods' => ['courier', 'personal'],
         'delivery_prices' => ['courier' => '18.99'],
-        'district' => 'Mokotów',
+        'location' => 'Warszawa, Mokotów',
+        'latitude' => 52.2040093,
+        'longitude' => 21.0287184,
     ]);
 
     $this->actingAs(User::factory()->create())
@@ -106,7 +120,8 @@ it('stores the negotiability, condition and delivery chosen in the form', functi
         ->assertCreated()
         ->assertJsonPath('data.is_negotiable', true)
         ->assertJsonPath('data.condition', 'used')
-        ->assertJsonPath('data.district', 'Mokotów')
+        ->assertJsonPath('data.location', 'Warszawa, Mokotów')
+        ->assertJsonPath('data.latitude', 52.2040093)
         ->assertJsonPath('data.delivery_methods', ['courier', 'personal'])
         ->assertJsonPath('data.delivery_prices.courier', '18.99');
 });

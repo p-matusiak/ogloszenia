@@ -3,9 +3,9 @@
 declare(strict_types=1);
 
 return [
-    'site_name' => env('APP_NAME', 'Ogłoszenia'),
+    'site_name' => env('APP_NAME', 'Zunto'),
 
-    'default_description' => 'Serwis ogłoszeń drobnych — dodawaj, przeglądaj i wyszukuj ogłoszenia.',
+    'default_description' => 'Zunto — serwis ogłoszeń drobnych. Dodawaj, przeglądaj i wyszukuj ogłoszenia.',
 
     /*
      * Sitemapa i kanały RSS są identyczne dla każdego odwiedzającego, a każda
@@ -66,10 +66,16 @@ return [
      * catch-allem — dzięki temu nieistniejący adres kończy się realnym 404.
      */
     'pages' => [
-        'home' => [
+        'landing' => [
             'path' => '/',
             'title' => null,
-            'description' => 'Tysiące ogłoszeń drobnych w jednym miejscu. Kupuj i sprzedawaj lokalnie — motoryzacja, elektronika, dom i ogród.',
+            'description' => 'Zunto — kupuj, sprzedawaj i znajdź oferty lokalnie. Tysiące ogłoszeń drobnych w Twojej okolicy.',
+            'indexable' => true,
+        ],
+        'listings' => [
+            'path' => 'ogloszenia',
+            'title' => 'Ogłoszenia',
+            'description' => 'Przeglądaj ogłoszenia drobne — filtruj po cenie, kategorii, lokalizacji i stanie.',
             'indexable' => true,
         ],
         'terms' => [

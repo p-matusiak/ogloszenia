@@ -3,15 +3,19 @@ import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
 import Message from 'primevue/message'
 import Password from 'primevue/password'
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { onMounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
+import { useRoute, useRouter } from 'vue-router'
 
 import { errorMessage, validationErrors } from '@/api/client'
 import AuthCard from '@/components/auth/AuthCard.vue'
+import SocialLoginButtons from '@/components/auth/SocialLoginButtons.vue'
 import { useAuthStore } from '@/stores/auth'
 
+const { t } = useI18n()
 const auth = useAuthStore()
 const router = useRouter()
+const route = useRoute()
 
 const name = ref('')
 const email = ref('')
@@ -19,6 +23,18 @@ const password = ref('')
 const passwordConfirmation = ref('')
 const errors = ref<Record<string, string>>({})
 const generalError = ref<string | null>(null)
+
+onMounted(() => {
+  const oauthError = route.query.oauth_error
+
+  if (oauthError === 'unconfigured') {
+    generalError.value = t('auth.oauth.unconfigured')
+  } else if (oauthError === 'email_required') {
+    generalError.value = t('auth.oauth.emailRequired')
+  } else if (oauthError === 'failed' || oauthError === '1') {
+    generalError.value = t('auth.oauth.error')
+  }
+})
 
 async function onSubmit(): Promise<void> {
   errors.value = {}
@@ -32,14 +48,14 @@ async function onSubmit(): Promise<void> {
       password_confirmation: passwordConfirmation.value,
     })
 
-    await router.push({ name: 'home' })
+    await router.push({ name: 'landing' })
   } catch (caught: unknown) {
     const fieldErrors = validationErrors(caught)
 
     if (Object.keys(fieldErrors).length > 0) {
       errors.value = fieldErrors
     } else {
-      generalError.value = errorMessage(caught, 'Rejestracja nie powiodła się.')
+      generalError.value = errorMessage(caught, t('auth.register.error'))
     }
   }
 }
@@ -47,8 +63,8 @@ async function onSubmit(): Promise<void> {
 
 <template>
   <AuthCard
-    title="Załóż konto"
-    subtitle="Konto jest bezpłatne i pozwala publikować ogłoszenia."
+    :title="t('auth.register.title')"
+    :subtitle="t('auth.register.subtitle')"
   >
     <Message
       v-if="generalError"
@@ -63,7 +79,7 @@ async function onSubmit(): Promise<void> {
       @submit.prevent="onSubmit"
     >
       <div class="field">
-        <label for="name">Imię i nazwisko</label>
+        <label for="name">{{ t('auth.register.name') }}</label>
         <InputText
           id="name"
           v-model="name"
@@ -82,7 +98,7 @@ async function onSubmit(): Promise<void> {
       </div>
 
       <div class="field">
-        <label for="email">E-mail</label>
+        <label for="email">{{ t('auth.register.email') }}</label>
         <InputText
           id="email"
           v-model="email"
@@ -102,7 +118,7 @@ async function onSubmit(): Promise<void> {
       </div>
 
       <div class="field">
-        <label for="password">Hasło</label>
+        <label for="password">{{ t('auth.register.password') }}</label>
         <Password
           v-model="password"
           input-id="password"
@@ -124,7 +140,7 @@ async function onSubmit(): Promise<void> {
       <!-- Reguła `confirmed` Laravela zgłasza niezgodność pod kluczem `password`,
            więc komunikat pojawia się przy polu wyżej, a nie tutaj. -->
       <div class="field">
-        <label for="password_confirmation">Powtórz hasło</label>
+        <label for="password_confirmation">{{ t('auth.register.passwordConfirmation') }}</label>
         <Password
           v-model="passwordConfirmation"
           input-id="password_confirmation"
@@ -138,28 +154,30 @@ async function onSubmit(): Promise<void> {
 
       <Button
         type="submit"
-        label="Załóż konto"
+        :label="t('auth.register.submit')"
         class="form__submit"
         :loading="auth.isLoading"
         fluid
       />
     </form>
 
+    <SocialLoginButtons />
+
     <p class="consent">
-      Zakładając konto, akceptujesz
+      {{ t('auth.register.consentPrefix') }}
       <RouterLink :to="{ name: 'terms' }">
-        Regulamin
+        {{ t('auth.register.termsLink') }}
       </RouterLink>
-      i potwierdzasz zapoznanie się z
+      {{ t('auth.register.consentMiddle') }}
       <RouterLink :to="{ name: 'privacy' }">
-        Polityką prywatności
+        {{ t('auth.register.privacyLink') }}
       </RouterLink>.
     </p>
 
     <template #footer>
-      Masz już konto?
+      {{ t('auth.register.hasAccount') }}
       <RouterLink :to="{ name: 'login' }">
-        Zaloguj się
+        {{ t('auth.register.loginLink') }}
       </RouterLink>
     </template>
   </AuthCard>

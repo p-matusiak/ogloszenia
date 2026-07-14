@@ -3,13 +3,16 @@ import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
 import Message from 'primevue/message'
 import Password from 'primevue/password'
-import { ref } from 'vue'
+import { onMounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 
 import { errorMessage, validationErrors } from '@/api/client'
 import AuthCard from '@/components/auth/AuthCard.vue'
+import SocialLoginButtons from '@/components/auth/SocialLoginButtons.vue'
 import { useAuthStore } from '@/stores/auth'
 
+const { t } = useI18n()
 const auth = useAuthStore()
 const router = useRouter()
 const route = useRoute()
@@ -26,6 +29,18 @@ const generalError = ref<string | null>(null)
  */
 const showsSeededCredentials = import.meta.env.VITE_SHOW_SEED_CREDENTIALS === 'true'
 
+onMounted(() => {
+  const oauthError = route.query.oauth_error
+
+  if (oauthError === 'unconfigured') {
+    generalError.value = t('auth.oauth.unconfigured')
+  } else if (oauthError === 'email_required') {
+    generalError.value = t('auth.oauth.emailRequired')
+  } else if (oauthError === 'failed' || oauthError === '1') {
+    generalError.value = t('auth.oauth.error')
+  }
+})
+
 async function onSubmit(): Promise<void> {
   errors.value = {}
   generalError.value = null
@@ -34,14 +49,14 @@ async function onSubmit(): Promise<void> {
     await auth.login({ email: email.value, password: password.value })
 
     const redirect = route.query.redirect
-    await router.push(typeof redirect === 'string' ? redirect : { name: 'home' })
+    await router.push(typeof redirect === 'string' ? redirect : { name: 'landing' })
   } catch (caught: unknown) {
     const fieldErrors = validationErrors(caught)
 
     if (Object.keys(fieldErrors).length > 0) {
       errors.value = fieldErrors
     } else {
-      generalError.value = errorMessage(caught, 'Logowanie nie powiodło się.')
+      generalError.value = errorMessage(caught, t('auth.login.error'))
     }
   }
 }
@@ -49,8 +64,8 @@ async function onSubmit(): Promise<void> {
 
 <template>
   <AuthCard
-    title="Zaloguj się"
-    subtitle="Zaloguj się, aby publikować i zarządzać ogłoszeniami."
+    :title="t('auth.login.title')"
+    :subtitle="t('auth.login.subtitle')"
   >
     <Message
       v-if="generalError"
@@ -65,7 +80,7 @@ async function onSubmit(): Promise<void> {
       @submit.prevent="onSubmit"
     >
       <div class="field">
-        <label for="email">E-mail</label>
+        <label for="email">{{ t('auth.login.email') }}</label>
         <InputText
           id="email"
           v-model="email"
@@ -85,7 +100,7 @@ async function onSubmit(): Promise<void> {
       </div>
 
       <div class="field">
-        <label for="password">Hasło</label>
+        <label for="password">{{ t('auth.login.password') }}</label>
         <Password
           v-model="password"
           input-id="password"
@@ -107,12 +122,14 @@ async function onSubmit(): Promise<void> {
 
       <Button
         type="submit"
-        label="Zaloguj"
+        :label="t('auth.login.submit')"
         class="form__submit"
         :loading="auth.isLoading"
         fluid
       />
     </form>
+
+    <SocialLoginButtons />
 
     <Message
       v-if="showsSeededCredentials"
@@ -120,13 +137,13 @@ async function onSubmit(): Promise<void> {
       size="small"
       class="alert alert--hint"
     >
-      Konto administratora po seedingu: <strong>admin@ogloszenia.local</strong> / <strong>password</strong>
+      Konto administratora po seedingu: <strong>admin@zunto.local</strong> / <strong>password</strong>
     </Message>
 
     <template #footer>
-      Nie masz konta?
+      {{ t('auth.login.noAccount') }}
       <RouterLink :to="{ name: 'register' }">
-        Załóż konto
+        {{ t('auth.login.registerLink') }}
       </RouterLink>
     </template>
   </AuthCard>

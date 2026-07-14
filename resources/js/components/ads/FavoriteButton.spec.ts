@@ -27,6 +27,9 @@ const signedInUser = {
   is_admin: false,
   is_email_verified: true,
   phone: null,
+  default_location: null,
+  default_latitude: null,
+  default_longitude: null,
 }
 
 function mountButton(authenticated = false) {

@@ -13,7 +13,7 @@ const props = defineProps<{
   seller?: Seller
   hasPhone: boolean
   maskedPhone: string | null
-  canMessage?: boolean
+  showMessage?: boolean
 }>()
 
 const emit = defineEmits<{ message: [] }>()
@@ -74,7 +74,17 @@ async function showPhone(): Promise<void> {
         class="seller__avatar seller__avatar--fallback"
       />
       <div>
-        <p class="seller__name">
+        <RouterLink
+          v-if="props.seller.slug"
+          :to="{ name: 'sellers.show', params: { sellerSlug: props.seller.slug } }"
+          class="seller__name seller__name--link"
+        >
+          {{ props.seller.name }}
+        </RouterLink>
+        <p
+          v-else
+          class="seller__name"
+        >
           {{ props.seller.name }}
         </p>
         <p
@@ -110,7 +120,7 @@ async function showPhone(): Promise<void> {
     </template>
 
     <Button
-      v-if="canMessage"
+      v-if="showMessage"
       icon="pi pi-comments"
       label="Wyślij wiadomość"
       fluid
@@ -152,6 +162,15 @@ async function showPhone(): Promise<void> {
 .seller__name {
   margin: 0;
   font-weight: 600;
+}
+
+.seller__name--link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.seller__name--link:hover {
+  color: var(--p-primary-color);
 }
 
 .seller__since {

@@ -1,4 +1,4 @@
-const DEFAULT_SITE_NAME = 'Ogłoszenia'
+const DEFAULT_SITE_NAME = 'Zunto'
 
 const SITE_NAME = import.meta.env.VITE_APP_NAME ?? DEFAULT_SITE_NAME
 

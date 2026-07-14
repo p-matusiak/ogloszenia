@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Actions\Messages;
 
+use App\Events\MessageWasSent;
 use App\Exceptions\Domain\AdNotMessageableException;
 use App\Exceptions\Domain\CannotMessageOwnAdException;
 use App\Models\Ad;
@@ -36,7 +37,7 @@ final readonly class SendAdMessageAction
             throw new AdNotMessageableException;
         }
 
-        return DB::transaction(function () use ($buyer, $ad, $body): Conversation {
+        $conversation = DB::transaction(function () use ($buyer, $ad, $body): Conversation {
             $conversation = $this->conversations->findForAdAndBuyer($ad, $buyer)
                 ?? $this->conversations->createForAd($ad, $buyer);
 
@@ -44,7 +45,11 @@ final readonly class SendAdMessageAction
             $this->conversations->recordMessage($conversation, $message);
             $this->conversations->markReadForParticipant($conversation, $buyer);
 
+            event(new MessageWasSent($conversation, $message, $buyer));
+
             return $conversation->fresh(['ad.category.ancestors', 'ad.primaryImage', 'buyer', 'seller']);
         });
+
+        return $conversation;
     }
 }

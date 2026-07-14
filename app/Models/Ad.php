@@ -7,6 +7,7 @@ namespace App\Models;
 use App\Enums\AdCondition;
 use App\Enums\AdStatus;
 use App\Services\CategoryClosureRepository;
+use App\Support\AdDeletionSchedule;
 use Database\Factories\AdFactory;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Builder;
@@ -17,6 +18,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Carbon;
 
@@ -36,15 +38,19 @@ use Illuminate\Support\Carbon;
  * @property AdCondition|null $condition
  * @property list<string> $delivery_methods
  * @property array<string, string> $delivery_prices
- * @property string|null $district
  * @property int $phone_reveals_count
  * @property string|null $location
+ * @property string|null $latitude decimal:7 is cast to string to preserve precision
+ * @property string|null $longitude decimal:7 is cast to string to preserve precision
+ * @property mixed $coordinates PostGIS geography(POINT, 4326); generated, never exposed in API
  * @property string|null $contact_email
  * @property string|null $contact_phone
  * @property AdStatus $status
  * @property string|null $rejection_reason
  * @property Carbon|null $published_at
  * @property Carbon|null $expires_at
+ * @property Carbon|null $deletion_warning_sent_at
+ * @property Carbon|null $deleted_at
  * @property Carbon $terms_accepted_at
  * @property int $views_count
  * @property Carbon|null $created_at
@@ -60,7 +66,7 @@ use Illuminate\Support\Carbon;
 final class Ad extends Model
 {
     /** @use HasFactory<AdFactory> */
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
     /**
      * Written exclusively through Actions, never mass-assigned from a request.
@@ -134,7 +140,11 @@ final class Ad extends Model
 
     public function isRefreshable(): bool
     {
-        return $this->status->isRefreshable() && $this->hasLapsed();
+        if (! $this->status->isRefreshable() || ! $this->hasLapsed() || $this->expires_at === null) {
+            return false;
+        }
+
+        return app(AdDeletionSchedule::class)->isWithinRefreshGrace($this->expires_at);
     }
 
     /**
@@ -162,9 +172,12 @@ final class Ad extends Model
     }
 
     /**
-     * Lustrzane odbicie `isPubliclyVisible()` w SQL. `expires_at IS NULL` liczy
-     * się jako „nie wygasło”, dokładnie tak jak w `ExpireAdsAction`, który tylko
-     * takie wiersze pomija.
+     * Lustrzane odbicie `isPubliclyVisible()` w SQL. Jedyny dopuszczalny filtr
+     * publicznego listingu — każda ścieżka odczytu dla gościa musi przez ten scope.
+     * Statyczna część predykatu indeksów listingu: {@see AdListingPredicate}.
+     *
+     * `expires_at IS NULL` liczy się jako „nie wygasło”, dokładnie tak jak w
+     * `ExpireAdsAction`, który tylko takie wiersze pomija.
      *
      * @param  Builder<Ad>  $query
      */
@@ -220,6 +233,23 @@ final class Ad extends Model
     }
 
     /**
+     * Ogłoszenia z ustawionymi współrzędnymi w promieniu od punktu. ST_MakePoint
+     * przyjmuje (longitude, latitude); ST_DWithin liczy metry na elipsoidzie.
+     * Indeks GiST ads_active_coordinates_gist pokrywa ten predykat.
+     *
+     * @param  Builder<Ad>  $query
+     */
+    public function scopeWithinRadius(Builder $query, float $latitude, float $longitude, float $radiusKm): void
+    {
+        $query
+            ->whereNotNull('coordinates')
+            ->whereRaw(
+                'ST_DWithin(coordinates, ST_SetSRID(ST_MakePoint(?, ?), 4326)::geography, ?)',
+                [$longitude, $latitude, $radiusKm * 1000],
+            );
+    }
+
+    /**
      * Numer widoczny na ogłoszeniu: nadpisanie z formularza albo telefon z profilu.
      */
     public function resolvedContactPhone(): ?string
@@ -249,9 +279,12 @@ final class Ad extends Model
             'is_negotiable' => 'boolean',
             'has_price' => 'boolean',
             'price' => 'decimal:2',
+            'latitude' => 'decimal:7',
+            'longitude' => 'decimal:7',
             'views_count' => 'integer',
             'published_at' => 'datetime',
             'expires_at' => 'datetime',
+            'deletion_warning_sent_at' => 'datetime',
             'terms_accepted_at' => 'datetime',
         ];
     }

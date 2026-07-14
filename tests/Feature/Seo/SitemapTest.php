@@ -48,7 +48,7 @@ it('leaves out ads and categories that the public must not reach', function (): 
 });
 
 it('builds urls from APP_URL, not from the host that happened to warm the cache', function (): void {
-    config(['app.url' => 'https://ogloszenia.example']);
+    config(['app.url' => 'https://zunto.example']);
     Ad::factory()->create(['slug' => 'sprzedam-fiata']);
 
     // Żądanie leci po „localhost”, a plik jest cache'owany globalnie. Gdyby URL-e
@@ -56,7 +56,7 @@ it('builds urls from APP_URL, not from the host that happened to warm the cache'
     // w sitemapie, którą potem pobiera Googlebot.
     $this->get('/sitemap.xml')
         ->assertOk()
-        ->assertSee('<loc>https://ogloszenia.example/ogloszenie/sprzedam-fiata</loc>', false)
+        ->assertSee('<loc>https://zunto.example/ogloszenie/sprzedam-fiata</loc>', false)
         ->assertDontSee('localhost', false);
 });
 

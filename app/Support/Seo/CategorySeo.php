@@ -42,7 +42,7 @@ final class CategorySeo
     {
         // Lista par, a nie mapa nazwa → adres: dwie kategorie o tej samej nazwie
         // w jednej ścieżce („Motoryzacja > Inne”, „Dom > Inne”) nadpisałyby się.
-        $trail = [[self::HOME_LABEL, $this->siteUrl->route('home')]];
+        $trail = [[self::HOME_LABEL, $this->siteUrl->route('landing')]];
 
         foreach ($category->ancestors->reverse() as $ancestor) {
             $trail[] = [$ancestor->name, $this->url($ancestor)];

@@ -8,6 +8,7 @@ use App\Models\Ad;
 use App\Models\AdImage;
 use App\Models\Category;
 use App\Models\User;
+use App\Support\SellerSlugGenerator;
 use Carbon\CarbonInterface;
 use Illuminate\Database\QueryException;
 use Illuminate\Database\Seeder;
@@ -53,25 +54,33 @@ final class AdSeeder extends Seeder
     {
         $count = max(1, (int) config('seeding.seller_count', 250));
 
+        $slugGenerator = app(SellerSlugGenerator::class);
+
         for ($i = 1; $i <= $count; $i++) {
-            User::query()->updateOrCreate(
-                ['email' => AdSeederProfile::sellerEmail($i)],
-                [
-                    'name' => AdSeederProfile::sellerName($i),
-                    'email_verified_at' => now(),
-                    'password' => Hash::make('password'),
-                    'avatar_path' => null,
-                    'bio' => null,
-                    'phone' => $i % 2 === 0
-                        ? sprintf('+48 501 %03d %03d', $i % 1_000, ($i * 3) % 1_000)
-                        : null,
-                    'is_admin' => false,
-                ],
-            );
+            $name = AdSeederProfile::sellerName($i);
+            $email = AdSeederProfile::sellerEmail($i);
+
+            $attributes = [
+                'name' => $name,
+                'email_verified_at' => now(),
+                'password' => Hash::make('password'),
+                'avatar_path' => null,
+                'bio' => null,
+                'phone' => $i % 2 === 0
+                    ? sprintf('+48 501 %03d %03d', $i % 1_000, ($i * 3) % 1_000)
+                    : null,
+                'is_admin' => false,
+            ];
+
+            if (! User::query()->where('email', $email)->exists()) {
+                $attributes['slug'] = $slugGenerator->generate($name);
+            }
+
+            User::query()->updateOrCreate(['email' => $email], $attributes);
         }
 
         return User::query()
-            ->where('email', 'like', 'seed-seller-%@ogloszenia.local')
+            ->where('email', 'like', 'seed-seller-%@zunto.local')
             ->orderBy('id')
             ->get();
     }
@@ -166,7 +175,8 @@ final class AdSeeder extends Seeder
             }, 3);
         } catch (QueryException $exception) {
             throw new \RuntimeException(
-                'AdSeeder stopped while persisting a batch. Free database disk space and rerun the seeder.',
+                'AdSeeder stopped while persisting a batch: '.$exception->getMessage(),
+                previous: $exception,
             );
         }
     }
@@ -231,7 +241,8 @@ final class AdSeeder extends Seeder
      *     description: string,
      *     price: string|null,
      *     location: string,
-     *     district: string|null,
+     *     latitude: float,
+     *     longitude: float,
      *     contact_email: string|null,
      *     contact_phone: string|null,
      *     status: string,
@@ -262,7 +273,8 @@ final class AdSeeder extends Seeder
             'description' => AdSeederProfile::description($rootSlug, $category->name, $sequence),
             'price' => AdSeederProfile::price($rootSlug, $sequence),
             'location' => AdSeederProfile::location($sequence),
-            'district' => AdSeederProfile::district($sequence),
+            'latitude' => AdSeederProfile::coordinates($sequence)[0],
+            'longitude' => AdSeederProfile::coordinates($sequence)[1],
             'contact_email' => null,
             'contact_phone' => $sequence % 3 === 0 ? sprintf('+48 500 %03d %03d', $sequence % 1_000, ($sequence * 7) % 1_000) : null,
             'status' => 'active',

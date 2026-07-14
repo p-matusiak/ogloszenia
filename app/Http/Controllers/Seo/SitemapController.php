@@ -39,6 +39,7 @@ final class SitemapController extends Controller
         return view('seo.sitemap', [
             'staticPages' => $this->urls->staticPages(),
             'categories' => $this->urls->categories(),
+            'sellers' => $this->urls->sellers(),
             'ads' => $this->urls->ads(),
         ])->render();
     }

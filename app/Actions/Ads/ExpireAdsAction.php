@@ -4,20 +4,24 @@ declare(strict_types=1);
 
 namespace App\Actions\Ads;
 
-use App\Enums\AdStatus;
-use App\Models\Ad;
+use App\Events\AdWasExpired;
+use App\Repositories\Contracts\AdRepository;
 
-final class ExpireAdsAction
+final readonly class ExpireAdsAction
 {
+    public function __construct(private AdRepository $ads) {}
+
     /**
      * @return int Number of ads moved out of the public listing.
      */
     public function execute(): int
     {
-        return Ad::query()
-            ->where('status', AdStatus::Active)
-            ->whereNotNull('expires_at')
-            ->where('expires_at', '<=', now())
-            ->update(['status' => AdStatus::Expired]);
+        $expired = $this->ads->expireDueActiveAds();
+
+        foreach ($expired as $ad) {
+            event(new AdWasExpired($ad));
+        }
+
+        return $expired->count();
     }
 }

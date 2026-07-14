@@ -23,10 +23,11 @@ withDefaults(defineProps<{ label: string; tone?: BadgeTone }>(), { tone: 'neutra
   white-space: nowrap;
 }
 
-/* „Do negocjacji” — wypełniona, chłodna. */
+/* „Do negocjacji” — delikatny pomarańcz marki, bez obramowania. */
 .badge--info {
-  background: color-mix(in srgb, var(--p-primary-color) 12%, transparent);
-  color: var(--p-primary-color);
+  background: color-mix(in srgb, var(--brand-orange) 11%, var(--surface-muted));
+  color: color-mix(in srgb, var(--brand-orange) 82%, var(--text-strong));
+  font-weight: 600;
 }
 
 /* „Paczkomat, Kurier…” — obrysowana, zielona, jak w makiecie. */

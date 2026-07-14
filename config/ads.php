@@ -9,6 +9,17 @@ return [
     'lifetime_days' => (int) env('ADS_LIFETIME_DAYS', 30),
 
     /*
+     * Po wygaśnięciu ogłoszenie można odświeżyć przez tyle dni, zanim zostanie
+     * trwale usunięte. Liczone od `expires_at`, nie od zmiany statusu na expired.
+     */
+    'refresh_grace_days' => (int) env('ADS_REFRESH_GRACE_DAYS', 30),
+
+    /*
+     * Ile dni przed planowanym usunięciem wysłać ostrzegawczy e-mail.
+     */
+    'deletion_warning_days' => (int) env('ADS_DELETION_WARNING_DAYS', 5),
+
+    /*
      * Anti-spam: how many ads a single user may create per calendar day.
      */
     'daily_limit_per_user' => (int) env('ADS_DAILY_LIMIT_PER_USER', 5),
@@ -28,6 +39,10 @@ return [
     ],
 
     'per_page' => 20,
+
+    'geo' => [
+        'max_radius_km' => (int) env('ADS_GEO_MAX_RADIUS_KM', 500),
+    ],
 
     /*
      * Sekundy życia zapamiętanego COUNT(*) dla publicznej listy. Dokładny licznik

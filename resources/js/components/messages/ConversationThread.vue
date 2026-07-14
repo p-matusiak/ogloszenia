@@ -9,6 +9,7 @@ import type { Message } from '@/types/api'
 const props = defineProps<{
   messages: Message[]
   otherPartyName: string
+  otherPartyAvatarUrl?: string | null
 }>()
 
 interface MessageDayGroup {
@@ -84,11 +85,19 @@ function showAvatar(index: number, group: MessageDayGroup): boolean {
           :class="{ 'thread__row--mine': message.is_mine }"
         >
           <Avatar
-            v-if="showAvatar(index, group)"
-            :label="participantInitials(otherPartyName)"
+            v-if="showAvatar(index, group) && otherPartyAvatarUrl"
+            :image="otherPartyAvatarUrl"
+            :alt="otherPartyName"
             shape="circle"
             size="normal"
             class="thread__avatar"
+          />
+          <Avatar
+            v-else-if="showAvatar(index, group)"
+            :label="participantInitials(otherPartyName)"
+            shape="circle"
+            size="normal"
+            class="thread__avatar thread__avatar--fallback"
           />
           <span
             v-else-if="!message.is_mine"
@@ -172,6 +181,9 @@ function showAvatar(index: number, group: MessageDayGroup): boolean {
 
 .thread__avatar {
   flex-shrink: 0;
+}
+
+.thread__avatar--fallback {
   background: color-mix(in srgb, var(--p-primary-color) 14%, transparent);
   color: var(--p-primary-color);
   font-weight: 700;
