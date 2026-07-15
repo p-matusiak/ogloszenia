@@ -21,6 +21,18 @@ final class AdListingPredicate
     public const string PARTIAL_INDEX_WHERE = "status = 'active' AND ".self::SOFT_DELETED_EXCLUDED;
 
     /**
+     * Znormalizowany tekst przeszukiwany przez {@see Ad::scopeMatching()}: tytuł,
+     * opis i lokalizacja złączone, złożone małymi literami i pozbawione akcentów.
+     * Ta sama, dosłownie identyczna definicja karmi indeks GIN pg_trgm
+     * {@see self::SEARCH_TEXT_TRGM_INDEX_NAME} — planer użyje indeksu tylko wtedy,
+     * gdy wyrażenie w predykacie i w indeksie są znak w znak takie same.
+     */
+    public const string SEARCH_TEXT_EXPRESSION =
+        "f_unaccent(lower(coalesce(title, '') || ' ' || coalesce(description, '') || ' ' || coalesce(location, '')))";
+
+    public const string SEARCH_TEXT_TRGM_INDEX_NAME = 'ads_search_text_trgm_index';
+
+    /**
      * Slug jest unikalny tylko wśród żywych wierszy; soft delete zwalnia adres URL.
      *
      * @var list<string>
@@ -54,7 +66,7 @@ final class AdListingPredicate
      */
     public const array PARTIAL_GIN_INDEX_NAMES = [
         'ads_delivery_methods_index',
-        'ads_search_vector_index',
+        self::SEARCH_TEXT_TRGM_INDEX_NAME,
     ];
 
     /**

@@ -27,6 +27,7 @@ final class FetchDemoMarketplaceImagesCommand extends Command
                     'skip' => $this->line("  = {$imageName}"),
                     'ok' => $this->info("  + {$imageName}"),
                     'fail' => $this->error("  ! {$imageName}"),
+                    default => null,
                 };
             },
         );

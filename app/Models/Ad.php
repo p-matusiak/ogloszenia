@@ -8,6 +8,7 @@ use App\Enums\AdCondition;
 use App\Enums\AdStatus;
 use App\Services\CategoryClosureRepository;
 use App\Support\AdDeletionSchedule;
+use App\Support\AdListingPredicate;
 use Database\Factories\AdFactory;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Builder;
@@ -23,8 +24,9 @@ use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Carbon;
 
 /**
- * `search_vector` is a Postgres STORED generated column. It is never written by
- * the application and is hidden so it cannot leak into API payloads.
+ * Wyszukiwanie tekstowe działa na podłańcuchach (%fraza%) przez indeks GIN
+ * pg_trgm zbudowany na wyrażeniu {@see AdListingPredicate::SEARCH_TEXT_EXPRESSION};
+ * nie ma osobnej kolumny wyszukiwania, którą trzeba by chować przed API.
  *
  * @property int $id
  * @property int $user_id
@@ -62,7 +64,7 @@ use Illuminate\Support\Carbon;
  * @property-read Collection<int, AdReport> $reports
  * @property-read Collection<int, AdSlugHistory> $slugHistories
  */
-#[Hidden(['search_vector', 'has_price'])]
+#[Hidden(['has_price'])]
 final class Ad extends Model
 {
     /** @use HasFactory<AdFactory> */
@@ -190,30 +192,67 @@ final class Ad extends Model
     }
 
     /**
-     * Full-text match against the generated tsvector. websearch_to_tsquery
-     * tolerates arbitrary user input instead of throwing on stray operators.
+     * Dopasowanie podłańcuchowe: fraza może stać w dowolnym miejscu tytułu, opisu
+     * lub lokalizacji (odpowiednik %fraza%), bez oglądania się na granice słów,
+     * których pilnował full-text. Każde słowo zapytania musi wystąpić (AND);
+     * porównanie jest bezakcentowe i trafia w indeks GIN pg_trgm
+     * {@see AdListingPredicate::SEARCH_TEXT_TRGM_INDEX_NAME}.
      *
      * @param  Builder<Ad>  $query
      */
     public function scopeMatching(Builder $query, string $term): void
     {
-        $query->whereRaw(
-            "search_vector @@ websearch_to_tsquery('simple', f_unaccent(?))",
-            [$term],
-        );
+        foreach ($this->searchWords($term) as $word) {
+            $query->whereRaw(
+                AdListingPredicate::SEARCH_TEXT_EXPRESSION." LIKE ('%' || f_unaccent(lower(?)) || '%')",
+                [$word],
+            );
+        }
     }
 
     /**
-     * Highest rank first; published_at breaks ties so fresher ads win equal scores.
+     * Trafienia w tytule przed tymi, które pasują tylko opisem lub lokalizacją;
+     * przy remisie świeższe ogłoszenie wygrywa. Wyrażenie liczone jest na stronie
+     * wyników, więc nie potrzebuje własnego indeksu.
      *
      * @param  Builder<Ad>  $query
      */
     public function scopeOrderByRelevance(Builder $query, string $term): void
     {
-        $query->orderByRaw(
-            "ts_rank_cd(search_vector, websearch_to_tsquery('simple', f_unaccent(?))) DESC",
-            [$term],
-        )->orderByDesc('published_at');
+        $query
+            ->orderByRaw(
+                "CASE WHEN f_unaccent(lower(title)) LIKE ('%' || f_unaccent(lower(?)) || '%') THEN 0 ELSE 1 END",
+                [$this->escapeLikeWildcards(trim($term))],
+            )
+            ->orderByDesc('published_at');
+    }
+
+    /**
+     * Słowa zapytania: pozbawione skrajnej interpunkcji i pustych tokenów, ze
+     * zneutralizowanymi znakami wieloznacznymi LIKE, by użytkownik nie wstrzyknął
+     * własnego wzorca. „rower, & !" → ['rower'].
+     *
+     * @return list<string>
+     */
+    private function searchWords(string $term): array
+    {
+        $tokens = preg_split('/\s+/', trim($term), -1, PREG_SPLIT_NO_EMPTY);
+        $words = [];
+
+        foreach ($tokens === false ? [] : $tokens as $token) {
+            $trimmed = preg_replace('/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/u', '', $token);
+
+            if ($trimmed !== null && $trimmed !== '') {
+                $words[] = $this->escapeLikeWildcards($trimmed);
+            }
+        }
+
+        return $words;
+    }
+
+    private function escapeLikeWildcards(string $value): string
+    {
+        return addcslashes($value, '\\%_');
     }
 
     /**
