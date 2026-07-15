@@ -88,6 +88,12 @@ const messages = {
       consentMiddle: 'i potwierdzasz zapoznanie się z',
       privacyLink: 'Polityką prywatności',
       error: 'Rejestracja nie powiodła się.',
+      success: {
+        title: 'Konto założone',
+        subtitle: 'Zostało jeszcze potwierdzenie adresu e-mail.',
+        sent: 'Wysłaliśmy link aktywacyjny na {email}.',
+        body: 'Kliknij link z wiadomości, aby aktywować konto i publikować ogłoszenia. Jeśli e-maila nie ma w skrzynce, zajrzyj do folderu spam.',
+      },
     },
     verification: {
       banner: 'Potwierdź adres {email}, aby publikować ogłoszenia. Sprawdź skrzynkę i folder spam.',
@@ -191,10 +197,9 @@ const messages = {
       linkNieruchomosci: 'Nieruchomości',
       linkElektronika: 'Elektronika',
       linkAll: 'Wszystkie ogłoszenia',
-      newsletter: 'Newsletter',
-      newsletterHint: 'Otrzymuj najlepsze oferty prosto na skrzynkę.',
-      newsletterPlaceholder: 'Twój e-mail',
-      newsletterSubmit: 'Zapisz się',
+      getStarted: 'Zacznij teraz',
+      getStartedHint: 'Dodaj ogłoszenie za darmo i dotrzyj do kupujących w swojej okolicy.',
+      browseAds: 'Przeglądaj ogłoszenia',
     },
   },
   home: {
@@ -258,6 +263,8 @@ const messages = {
   errors: {
     unexpected: 'Wystąpił nieoczekiwany błąd.',
     forbidden: 'Nie masz uprawnień do tej operacji.',
+    tooManyAttempts: 'Zbyt wiele prób. Odczekaj chwilę i spróbuj ponownie.',
+    sessionExpired: 'Sesja wygasła. Odśwież stronę i spróbuj ponownie.',
     adsFetch: 'Nie udało się pobrać ogłoszeń.',
     favoritesFetch: 'Nie udało się pobrać ulubionych.',
     notFoundTitle: '404 — nie znaleziono strony',

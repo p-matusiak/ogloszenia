@@ -28,8 +28,26 @@ final class AppServiceProvider extends ServiceProvider
     {
         $this->configureTrustedProxies();
         $this->configureUrlsBehindProxy();
+        $this->configureSessionCookiesForAppUrl();
         $this->configureEloquentStrictness();
         $this->configureSeoDefaults();
+    }
+
+    /**
+     * Secure cookies are ignored by browsers over plain HTTP. When APP_URL is
+     * http://, forcing secure would break Sanctum CSRF and SPA login/register.
+     */
+    private function configureSessionCookiesForAppUrl(): void
+    {
+        if ($this->app->runningUnitTests()) {
+            return;
+        }
+
+        $appUrl = (string) Config::string('app.url');
+
+        if (str_starts_with($appUrl, 'http://')) {
+            Config::set('session.secure', false);
+        }
     }
 
     /**

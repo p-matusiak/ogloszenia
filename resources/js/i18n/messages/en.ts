@@ -83,6 +83,12 @@ const messages = {
       consentMiddle: 'and confirm that you have read the',
       privacyLink: 'Privacy policy',
       error: 'Registration failed.',
+      success: {
+        title: 'Account created',
+        subtitle: 'One step left: confirm your email address.',
+        sent: 'We have sent an activation link to {email}.',
+        body: 'Click the link in that message to activate your account and post ads. If the email is not in your inbox, check the spam folder.',
+      },
     },
     verification: {
       banner: 'Confirm {email} to post ads. Check your inbox and spam folder.',
@@ -186,10 +192,9 @@ const messages = {
       linkNieruchomosci: 'Real estate',
       linkElektronika: 'Electronics',
       linkAll: 'All ads',
-      newsletter: 'Newsletter',
-      newsletterHint: 'Get the best offers in your inbox.',
-      newsletterPlaceholder: 'Your email',
-      newsletterSubmit: 'Subscribe',
+      getStarted: 'Get started',
+      getStartedHint: 'Post an ad for free and reach buyers in your area.',
+      browseAds: 'Browse ads',
     },
   },
   home: {
@@ -253,6 +258,8 @@ const messages = {
   errors: {
     unexpected: 'An unexpected error occurred.',
     forbidden: 'You do not have permission for this action.',
+    tooManyAttempts: 'Too many attempts. Please wait a moment and try again.',
+    sessionExpired: 'Your session expired. Refresh the page and try again.',
     adsFetch: 'Could not load ads.',
     favoritesFetch: 'Could not load favorites.',
     notFoundTitle: '404 — page not found',

@@ -38,7 +38,10 @@ final class AuthController extends Controller
         // Signed in straight away, but unverified: the SPA shows an activation
         // banner rather than locking the visitor out of their own account.
         Auth::login($user);
-        $request->session()->regenerate();
+
+        if ($request->hasSession()) {
+            $request->session()->regenerate();
+        }
 
         return (new UserResource($user))->response()->setStatusCode(Response::HTTP_CREATED);
     }
@@ -55,7 +58,9 @@ final class AuthController extends Controller
             ]);
         }
 
-        $request->session()->regenerate();
+        if ($request->hasSession()) {
+            $request->session()->regenerate();
+        }
 
         $user = $request->user();
         assert($user instanceof User);
@@ -67,8 +72,10 @@ final class AuthController extends Controller
     {
         Auth::guard('web')->logout();
 
-        $request->session()->invalidate();
-        $request->session()->regenerateToken();
+        if ($request->hasSession()) {
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+        }
 
         return response()->noContent();
     }
@@ -109,8 +116,10 @@ final class AuthController extends Controller
 
         Auth::guard('web')->logout();
 
-        $request->session()->invalidate();
-        $request->session()->regenerateToken();
+        if ($request->hasSession()) {
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+        }
 
         return response()->noContent();
     }

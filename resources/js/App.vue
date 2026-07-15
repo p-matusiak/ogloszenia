@@ -21,6 +21,12 @@ const filters = computed(() => routeFilters(route.query))
 
 const isLandingPage = computed(() => route.name === 'landing')
 
+// The activation and post-registration cards already say the same thing, with
+// their own resend button; the banner would only repeat it.
+const showsVerificationBanner = computed(
+  () => route.name !== 'email.verify' && route.name !== 'register',
+)
+
 onMounted(async () => {
   initialise()
   await Promise.all([auth.resolve(), categories.load()])
@@ -36,9 +42,7 @@ onMounted(async () => {
     <CategoryNav v-if="!isLandingPage" />
 
     <main :class="['layout__main', isLandingPage ? 'layout__main--landing' : 'shell']">
-      <!-- Suppressed on the activation page itself, which already says the same
-           thing in its own card. -->
-      <EmailVerificationBanner v-if="route.name !== 'email.verify'" />
+      <EmailVerificationBanner v-if="showsVerificationBanner" />
 
       <RouterView />
     </main>

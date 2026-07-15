@@ -77,8 +77,18 @@ export function errorMessage(error: unknown, fallback = i18n.global.t('errors.un
     return domain.message
   }
 
-  if (error instanceof AxiosError && error.response?.status === HTTP_FORBIDDEN) {
-    return i18n.global.t('errors.forbidden')
+  if (error instanceof AxiosError && error.response) {
+    if (error.response.status === HTTP_FORBIDDEN) {
+      return i18n.global.t('errors.forbidden')
+    }
+
+    if (error.response.status === HTTP_TOO_MANY_REQUESTS) {
+      return i18n.global.t('errors.tooManyAttempts')
+    }
+
+    if (error.response.status === 419) {
+      return i18n.global.t('errors.sessionExpired')
+    }
   }
 
   return fallback

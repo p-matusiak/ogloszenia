@@ -1,12 +1,9 @@
 <script setup lang="ts">
 import Button from 'primevue/button'
-import InputText from 'primevue/inputtext'
-import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 const { t } = useI18n()
 const year = new Date().getFullYear()
-const newsletterEmail = ref('')
 const logoSrc = '/logo.png'
 </script>
 
@@ -83,29 +80,30 @@ const logoSrc = '/logo.png'
           </nav>
         </div>
 
-        <div class="site-footer__newsletter">
+        <div class="site-footer__cta">
           <h3 class="site-footer__heading">
-            {{ t('landing.footer.newsletter') }}
+            {{ t('landing.footer.getStarted') }}
           </h3>
-          <p class="site-footer__newsletter-text">
-            {{ t('landing.footer.newsletterHint') }}
+          <p class="site-footer__cta-text">
+            {{ t('landing.footer.getStartedHint') }}
           </p>
-          <form
-            class="site-footer__newsletter-form"
-            @submit.prevent
-          >
-            <InputText
-              v-model="newsletterEmail"
-              type="email"
-              :placeholder="t('landing.footer.newsletterPlaceholder')"
-              :aria-label="t('landing.footer.newsletterPlaceholder')"
-            />
-            <Button
-              type="submit"
-              :label="t('landing.footer.newsletterSubmit')"
-              class="site-footer__newsletter-btn"
-            />
-          </form>
+          <div class="site-footer__cta-actions">
+            <RouterLink
+              :to="{ name: 'ads.create' }"
+              class="site-footer__cta-button"
+            >
+              <Button
+                :label="t('nav.addAd')"
+                icon="pi pi-plus"
+              />
+            </RouterLink>
+            <RouterLink
+              :to="{ name: 'listings' }"
+              class="site-footer__cta-link"
+            >
+              {{ t('landing.footer.browseAds') }}
+            </RouterLink>
+          </div>
         </div>
       </div>
 
@@ -203,21 +201,43 @@ const logoSrc = '/logo.png'
   color: var(--brand-orange);
 }
 
-.site-footer__newsletter-text {
-  margin: 0 0 0.75rem;
+.site-footer__cta-text {
+  margin: 0 0 1rem;
   font-size: 0.8125rem;
   color: rgb(255 255 255 / 78%);
+  line-height: 1.5;
 }
 
-.site-footer__newsletter-form {
+.site-footer__cta-actions {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  align-items: flex-start;
+  gap: 0.75rem;
 }
 
-.site-footer__newsletter-btn :deep(.p-button) {
+.site-footer__cta-button {
+  text-decoration: none;
+}
+
+.site-footer__cta-button :deep(.p-button) {
   background: var(--brand-orange);
   border-color: var(--brand-orange);
+}
+
+.site-footer__cta-button :deep(.p-button:enabled:hover) {
+  background: var(--brand-orange-hover);
+  border-color: var(--brand-orange-hover);
+}
+
+.site-footer__cta-link {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: rgb(255 255 255 / 88%);
+  text-decoration: none;
+}
+
+.site-footer__cta-link:hover {
+  color: var(--brand-orange);
 }
 
 .site-footer__bottom {

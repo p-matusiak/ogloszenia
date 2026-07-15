@@ -10,12 +10,14 @@ import { useRoute, useRouter } from 'vue-router'
 import { errorMessage, validationErrors } from '@/api/client'
 import AuthCard from '@/components/auth/AuthCard.vue'
 import SocialLoginButtons from '@/components/auth/SocialLoginButtons.vue'
+import { useResendVerification } from '@/composables/useEmailVerification'
 import { useAuthStore } from '@/stores/auth'
 
 const { t } = useI18n()
 const auth = useAuthStore()
 const router = useRouter()
 const route = useRoute()
+const { resend } = useResendVerification()
 
 const name = ref('')
 const email = ref('')
@@ -23,6 +25,8 @@ const password = ref('')
 const passwordConfirmation = ref('')
 const errors = ref<Record<string, string>>({})
 const generalError = ref<string | null>(null)
+/** Set once the account exists: the form gives way to the activation notice. */
+const registeredEmail = ref<string | null>(null)
 
 onMounted(() => {
   const oauthError = route.query.oauth_error
@@ -48,7 +52,9 @@ async function onSubmit(): Promise<void> {
       password_confirmation: passwordConfirmation.value,
     })
 
-    await router.push({ name: 'landing' })
+    // Landing the visitor on the home page hides the one thing they still have
+    // to do, so we hold them here until they know an e-mail is waiting.
+    registeredEmail.value = auth.user?.email ?? email.value
   } catch (caught: unknown) {
     const fieldErrors = validationErrors(caught)
 
@@ -63,6 +69,46 @@ async function onSubmit(): Promise<void> {
 
 <template>
   <AuthCard
+    v-if="registeredEmail"
+    :title="t('auth.register.success.title')"
+    :subtitle="t('auth.register.success.subtitle')"
+  >
+    <Message
+      severity="success"
+      :closable="false"
+      class="alert"
+    >
+      <i18n-t
+        keypath="auth.register.success.sent"
+        scope="global"
+      >
+        <template #email>
+          <strong>{{ registeredEmail }}</strong>
+        </template>
+      </i18n-t>
+    </Message>
+
+    <p class="success__body">
+      {{ t('auth.register.success.body') }}
+    </p>
+
+    <div class="success__actions">
+      <Button
+        :label="t('auth.verification.resend')"
+        severity="secondary"
+        outlined
+        :loading="auth.isLoading"
+        @click="resend"
+      />
+      <Button
+        :label="t('auth.verification.goToAds')"
+        @click="router.push({ name: 'listings' })"
+      />
+    </div>
+  </AuthCard>
+
+  <AuthCard
+    v-else
     :title="t('auth.register.title')"
     :subtitle="t('auth.register.subtitle')"
   >
@@ -186,6 +232,23 @@ async function onSubmit(): Promise<void> {
 <style scoped>
 .alert {
   margin-bottom: 1rem;
+}
+
+.success__body {
+  margin: 0 0 1.25rem;
+  font-size: 0.875rem;
+  line-height: 1.6;
+  color: var(--text-muted);
+}
+
+.success__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.success__actions > * {
+  flex: 1 1 12rem;
 }
 
 .consent {
