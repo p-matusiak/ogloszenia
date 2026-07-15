@@ -81,18 +81,20 @@ export async function buildLocationFilters(
     return clearGeoFilters()
   }
 
+  const normalizedLabel = trimmed ?? ''
+
   if (lat !== undefined && lng !== undefined) {
-    return geoFiltersFromSelection({ label: trimmed, lat, lng })
+    return geoFiltersFromSelection({ label: normalizedLabel, lat, lng })
   }
 
-  const resolved = await resolveLocationLabel(trimmed)
+  const resolved = await resolveLocationLabel(normalizedLabel)
 
   if (resolved !== null) {
     return geoFiltersFromSelection(resolved)
   }
 
   return {
-    location: trimmed,
+    location: normalizedLabel,
     lat: undefined,
     lng: undefined,
     radius_km: undefined,

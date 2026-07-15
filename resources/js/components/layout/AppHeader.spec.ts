@@ -2,7 +2,7 @@ import { createTestingPinia } from '@pinia/testing'
 import { mount } from '@vue/test-utils'
 import PrimeVue from 'primevue/config'
 import { setActivePinia } from 'pinia'
-import { ref } from 'vue'
+import { nextTick, ref } from 'vue'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import AppHeader from '@/components/layout/AppHeader.vue'
@@ -11,6 +11,7 @@ import { createTestI18n } from '@/testing/i18n'
 const push = vi.hoisted(() => vi.fn())
 const logout = vi.hoisted(() => vi.fn())
 const initialise = vi.hoisted(() => vi.fn())
+const toggleTheme = vi.hoisted(() => vi.fn())
 
 vi.mock('vue-router', () => ({
   useRouter: () => ({ push }),
@@ -19,7 +20,7 @@ vi.mock('vue-router', () => ({
 vi.mock('@/composables/useTheme', () => ({
   useTheme: () => ({
     isDark: ref(false),
-    toggle: vi.fn(),
+    toggle: toggleTheme,
     initialise,
   }),
 }))
@@ -71,6 +72,8 @@ beforeEach(() => {
   push.mockResolvedValue(undefined)
   logout.mockReset()
   initialise.mockReset()
+  toggleTheme.mockReset()
+  document.body.innerHTML = ''
 })
 
 describe('AppHeader', () => {
@@ -142,5 +145,29 @@ describe('AppHeader', () => {
     expect(wrapper.find('.actions__logout').exists()).toBe(true)
     expect(wrapper.find('.actions__admin').exists()).toBe(true)
     expect(wrapper.find('.actions__profile-name').exists()).toBe(true)
+  })
+
+  it('na mobile zostawia w pasku tylko zmianę motywu, dodawanie i hamburger', () => {
+    const wrapper = mountHeader({ authenticated: true, isAdmin: true })
+
+    expect(wrapper.find('.actions__mobile-menu-button').exists()).toBe(true)
+    expect(wrapper.find('.actions__desktop-only').exists()).toBe(true)
+    expect(wrapper.find('.actions__cta').exists()).toBe(true)
+    expect(wrapper.find('.actions__auth').exists()).toBe(false)
+    expect(wrapper.find('.actions__logout').exists()).toBe(true)
+  })
+
+  it('otwiera mobilne menu z przeniesionymi akcjami', async () => {
+    const wrapper = mountHeader({ authenticated: true, isAdmin: true })
+
+    await wrapper.find('.actions__mobile-menu-button').trigger('click')
+    await nextTick()
+
+    expect(document.body.textContent).toContain('Menu')
+    expect(document.body.textContent).toContain('Ulubione ogłoszenia')
+    expect(document.body.textContent).toContain('Wiadomości')
+    expect(document.body.textContent).toContain('Panel admina')
+    expect(document.body.textContent).toContain('Wyloguj')
+    expect(document.body.textContent).toContain('Język')
   })
 })

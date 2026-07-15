@@ -2,7 +2,7 @@
 import { RouterLink } from 'vue-router'
 
 import LegalPage from '@/components/legal/LegalPage.vue'
-import { AD_RULES, OPERATOR, PROCESSORS, SITE } from '@/config/legal'
+import { AD_RULES, OPERATOR, SITE } from '@/config/legal'
 </script>
 
 <template>
@@ -109,20 +109,18 @@ import { AD_RULES, OPERATOR, PROCESSORS, SITE } from '@/config/legal'
 
     <h2>4. Odbiorcy danych</h2>
     <p>
-      Dane powierzamy wyłącznie podmiotom, które przetwarzają je na nasze polecenie, na podstawie
-      umowy powierzenia zgodnej z art. 28 RODO:
-    </p>
-    <ul>
-      <li>dostawcy infrastruktury serwerowej: <span class="legal__todo">{{ PROCESSORS.hosting }}</span>;</li>
-      <li>dostawcy poczty wychodzącej, obsługującemu wiadomości systemowe: <span class="legal__todo">{{ PROCESSORS.email }}</span>.</li>
-    </ul>
-    <p>
-      Dane mogą zostać udostępnione organom publicznym, jeżeli obowiązek taki wynika z przepisów prawa.
+      Dane nie są przekazywane zewnętrznym dostawcom hostingu ani zewnętrznym operatorom poczty
+      wyłącznie w celu utrzymania serwisu, ponieważ {{ SITE.name }} działa na własnej infrastrukturze
+      administratora.
     </p>
     <p>
       <strong>Serwis nie korzysta z narzędzi analitycznych, reklamowych ani z wtyczek serwisów
         społecznościowych.</strong> Nie sprzedajemy ani nie udostępniamy danych w celach marketingowych
       i nie przekazujemy ich poza Europejski Obszar Gospodarczy.
+    </p>
+    <p>
+      Dane mogą zostać udostępnione organom publicznym wyłącznie wtedy, gdy obowiązek taki wynika
+      z przepisów prawa.
     </p>
 
     <h2>5. Brak profilowania</h2>

@@ -80,7 +80,7 @@ defineProps<{ ad: AdSummary }>()
   color: inherit;
   border: 1px solid transparent;
   border-bottom-color: var(--surface-border);
-  border-radius: var(--card-radius);
+  border-radius: 0;
   transition:
     background 0.15s ease,
     border-color 0.15s ease;
@@ -110,7 +110,7 @@ defineProps<{ ad: AdSummary }>()
   width: 100%;
   aspect-ratio: 4 / 3;
   object-fit: cover;
-  border-radius: 0.5rem;
+  border-radius: 0;
   background: var(--surface-muted);
 }
 

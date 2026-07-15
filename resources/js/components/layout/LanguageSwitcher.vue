@@ -8,8 +8,18 @@ import { useAppLocale } from '@/composables/useAppLocale'
 
 const { t } = useI18n()
 const { locale, options, setLocale } = useAppLocale()
+const props = withDefaults(
+  defineProps<{
+    compact?: boolean
+  }>(),
+  { compact: true },
+)
 
 const menu = ref<InstanceType<typeof Menu> | null>(null)
+
+const currentLocaleLabel = computed(
+  () => options.find((option) => option.value === locale.value)?.label ?? t('nav.language'),
+)
 
 const menuItems = computed(() =>
   options.map((option) => ({
@@ -26,12 +36,13 @@ function toggleMenu(event: MouseEvent): void {
 
 <template>
   <Button
-    icon="pi pi-globe"
+    :icon="props.compact ? 'pi pi-globe' : undefined"
+    :label="props.compact ? undefined : currentLocaleLabel"
     :aria-label="t('nav.language')"
     severity="secondary"
     text
-    rounded
-    class="language-switcher"
+    :rounded="props.compact"
+    :class="props.compact ? 'language-switcher' : 'language-switcher language-switcher--expanded'"
     @click="toggleMenu"
   />
   <Menu
@@ -51,5 +62,12 @@ function toggleMenu(event: MouseEvent): void {
 
 .language-switcher :deep(.p-button-icon) {
   font-size: 1rem;
+}
+
+.language-switcher--expanded :deep(.p-button) {
+  width: auto;
+  height: auto;
+  padding: 0.625rem 0.875rem;
+  border-radius: 0.75rem;
 }
 </style>

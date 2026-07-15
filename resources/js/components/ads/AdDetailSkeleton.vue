@@ -38,6 +38,20 @@ import Skeleton from 'primevue/skeleton'
   gap: 1rem;
 }
 
+@media (width < 62rem) {
+  .detail-skeleton {
+    width: 100%;
+  }
+
+  .detail-skeleton__crumbs {
+    margin-inline: 1rem;
+  }
+
+  .detail-skeleton__gallery :deep(.p-skeleton) {
+    border-radius: 0 !important;
+  }
+}
+
 .detail-skeleton__crumbs {
   margin-bottom: 0.25rem;
 }

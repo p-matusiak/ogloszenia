@@ -20,6 +20,10 @@ const { initialise } = useTheme()
 const filters = computed(() => routeFilters(route.query))
 
 const isLandingPage = computed(() => route.name === 'landing')
+const isListingPage = computed(
+  () => route.name === 'listings' || route.name === 'categories.show',
+)
+const isAdDetailPage = computed(() => route.name === 'ads.show')
 
 // The activation and post-registration cards already say the same thing, with
 // their own resend button; the banner would only repeat it.
@@ -41,7 +45,14 @@ onMounted(async () => {
     />
     <CategoryNav v-if="!isLandingPage" />
 
-    <main :class="['layout__main', isLandingPage ? 'layout__main--landing' : 'shell']">
+    <main
+      :class="[
+        'layout__main',
+        isLandingPage ? 'layout__main--landing' : 'shell',
+        isListingPage ? 'layout__main--listing' : null,
+        isAdDetailPage ? 'layout__main--detail' : null,
+      ]"
+    >
       <EmailVerificationBanner v-if="showsVerificationBanner" />
 
       <RouterView />
@@ -70,5 +81,14 @@ onMounted(async () => {
 
 .layout__main--landing {
   padding-block: 0;
+}
+
+@media (width < 62rem) {
+  .layout__main--listing,
+  .layout__main--detail {
+    width: 100%;
+    margin-inline: 0;
+    padding-inline: 0;
+  }
 }
 </style>
