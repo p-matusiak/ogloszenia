@@ -90,3 +90,40 @@ describe('refresh', () => {
     expect(auth.isEmailVerified).toBe(true)
   })
 })
+
+describe('resolve', () => {
+  it('współdzieli jedno zapytanie przy równoległych wywołaniach', async () => {
+    const controls: { release: null | (() => void) } = { release: null }
+
+    currentUser.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          controls.release = () => resolve(makeUser())
+        }),
+    )
+
+    const auth = useAuthStore()
+    const first = auth.resolve()
+    const second = auth.resolve()
+
+    expect(currentUser).toHaveBeenCalledTimes(1)
+
+    controls.release?.()
+    await Promise.all([first, second])
+
+    expect(auth.isAuthenticated).toBe(true)
+    expect(currentUser).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('hydrate', () => {
+  it('ustawia stan zalogowania bez wywołania /auth/me', () => {
+    const auth = useAuthStore()
+
+    auth.hydrate(makeUser())
+
+    expect(auth.isResolved).toBe(true)
+    expect(auth.isAuthenticated).toBe(true)
+    expect(currentUser).not.toHaveBeenCalled()
+  })
+})

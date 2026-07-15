@@ -45,6 +45,29 @@
         <script type="application/ld+json">{!! $meta->structuredData !!}</script>
     @endif
 
+    @php
+        $authenticatedUser = request()->user();
+        $initialAuthUser = $authenticatedUser === null
+            ? null
+            : (new \App\Http\Resources\UserResource($authenticatedUser))->resolve(request());
+    @endphp
+
+    <script>
+        (() => {
+            const stored = localStorage.getItem('zunto:theme');
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            const shouldUseDark = stored === 'dark' || (stored !== 'light' && prefersDark);
+
+            if (shouldUseDark) {
+                document.documentElement.classList.add('dark');
+            }
+        })();
+    </script>
+
+    <script id="app-bootstrap" type="application/json">
+        {!! json_encode(['user' => $initialAuthUser], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) !!}
+    </script>
+
     @vite(['resources/css/app.css', 'resources/js/app.ts'])
 </head>
 <body class="antialiased">

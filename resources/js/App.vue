@@ -8,7 +8,6 @@ import AppHeader from '@/components/layout/AppHeader.vue'
 import CategoryNav from '@/components/layout/CategoryNav.vue'
 import SiteFooter from '@/components/layout/SiteFooter.vue'
 import EmailVerificationBanner from '@/components/auth/EmailVerificationBanner.vue'
-import { useTheme } from '@/composables/useTheme'
 import { useAuthStore } from '@/stores/auth'
 import { useCategoryStore } from '@/stores/categories'
 import { routeFilters } from '@/composables/useRouteFilters'
@@ -16,7 +15,6 @@ import { routeFilters } from '@/composables/useRouteFilters'
 const route = useRoute()
 const auth = useAuthStore()
 const categories = useCategoryStore()
-const { initialise } = useTheme()
 const filters = computed(() => routeFilters(route.query))
 
 const isLandingPage = computed(() => route.name === 'landing')
@@ -32,7 +30,6 @@ const showsVerificationBanner = computed(
 )
 
 onMounted(async () => {
-  initialise()
   await Promise.all([auth.resolve(), categories.load()])
 })
 </script>

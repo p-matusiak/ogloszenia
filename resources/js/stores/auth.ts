@@ -12,6 +12,7 @@ export const useAuthStore = defineStore('auth', () => {
   const isLoading = ref(false)
   /** Distinguishes "not signed in" from "we have not asked the server yet". */
   const isResolved = ref(false)
+  let pendingResolve: Promise<void> | null = null
 
   const isAuthenticated = computed(() => user.value !== null)
   const isAdmin = computed(() => user.value?.is_admin === true)
@@ -82,13 +83,23 @@ export const useAuthStore = defineStore('auth', () => {
       return
     }
 
-    try {
-      user.value = await authApi.currentUser()
-    } catch {
-      user.value = null
-    } finally {
-      isResolved.value = true
+    if (pendingResolve !== null) {
+      await pendingResolve
+      return
     }
+
+    pendingResolve = (async () => {
+      try {
+        user.value = await authApi.currentUser()
+      } catch {
+        user.value = null
+      } finally {
+        isResolved.value = true
+        pendingResolve = null
+      }
+    })()
+
+    await pendingResolve
   }
 
   /**
@@ -97,7 +108,14 @@ export const useAuthStore = defineStore('auth', () => {
    */
   async function refresh(): Promise<void> {
     isResolved.value = false
+    pendingResolve = null
     await resolve()
+  }
+
+  function hydrate(nextUser: User | null): void {
+    user.value = nextUser
+    isResolved.value = true
+    pendingResolve = null
   }
 
   return {
@@ -115,5 +133,6 @@ export const useAuthStore = defineStore('auth', () => {
     resendVerification,
     resolve,
     refresh,
+    hydrate,
   }
 })
