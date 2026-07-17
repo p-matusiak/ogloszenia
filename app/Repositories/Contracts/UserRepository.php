@@ -22,6 +22,8 @@ interface UserRepository
 
     public function clearEmailVerification(User $user): void;
 
+    public function markEmailAsVerified(User $user): User;
+
     public function findPublicSellerBySlug(string $slug): ?User;
 
     public function findById(int $id): ?User;

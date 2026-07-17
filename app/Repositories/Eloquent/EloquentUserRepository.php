@@ -63,6 +63,17 @@ final class EloquentUserRepository implements UserRepository
         $user->forceFill(['email_verified_at' => null])->save();
     }
 
+    public function markEmailAsVerified(User $user): User
+    {
+        if ($user->email_verified_at !== null) {
+            return $user;
+        }
+
+        $user->forceFill(['email_verified_at' => now()])->save();
+
+        return $user->refresh();
+    }
+
     public function findPublicSellerBySlug(string $slug): ?User
     {
         return User::query()
