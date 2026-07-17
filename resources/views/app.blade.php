@@ -17,6 +17,9 @@
     <meta property="og:type" content="{{ $meta->openGraphType }}">
     <meta property="og:site_name" content="{{ config('seo.site_name') }}">
     <meta property="og:locale" content="pl_PL">
+    @if (filled(config('services.facebook.client_id')))
+        <meta property="fb:app_id" content="{{ config('services.facebook.client_id') }}">
+    @endif
     <meta property="og:title" content="{{ $meta->title }}">
     <meta property="og:description" content="{{ $meta->description }}">
     <meta property="og:url" content="{{ $meta->canonical }}">
@@ -43,6 +46,20 @@
 
     @if ($meta->structuredData !== null)
         <script type="application/ld+json">{!! $meta->structuredData !!}</script>
+    @endif
+
+    @if (filled(config('services.google.analytics_measurement_id')))
+        <script async src="https://www.googletagmanager.com/gtag/js?id={{ config('services.google.analytics_measurement_id') }}"></script>
+        <script>
+            window.dataLayer = window.dataLayer || [];
+
+            function gtag() {
+                dataLayer.push(arguments);
+            }
+
+            gtag('js', new Date());
+            gtag('config', '{{ config('services.google.analytics_measurement_id') }}');
+        </script>
     @endif
 
     @vite(['resources/css/app.css', 'resources/js/app.ts'])
