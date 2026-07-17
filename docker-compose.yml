@@ -9,6 +9,8 @@ services:
       dockerfile: docker/php/Dockerfile
     image: ${COMPOSE_PROJECT_NAME:-zunto}-php
     container_name: ${PHP_CONTAINER_NAME:-zunto-php}
+    extra_hosts:
+      - "mail.gesoft.pl:192.168.88.244"
     volumes:
       - .:/var/www/html
     depends_on:
@@ -83,6 +85,8 @@ services:
       dockerfile: docker/php/Dockerfile
     image: ${COMPOSE_PROJECT_NAME:-zunto}-php
     container_name: ${WORKER_CONTAINER_NAME:-zunto-worker}
+    extra_hosts:
+      - "mail.gesoft.pl:192.168.88.244"
     command: ["php", "artisan", "queue:work", "--queue=notifications,default", "--tries=3", "--backoff=5", "--max-time=3600"]
     restart: unless-stopped
     volumes:
@@ -96,6 +100,8 @@ services:
       dockerfile: docker/php/Dockerfile
     image: ${COMPOSE_PROJECT_NAME:-zunto}-php
     container_name: ${SCHEDULER_CONTAINER_NAME:-zunto-scheduler}
+    extra_hosts:
+      - "mail.gesoft.pl:192.168.88.244"
     command: ["php", "artisan", "schedule:work"]
     restart: unless-stopped
     volumes:
