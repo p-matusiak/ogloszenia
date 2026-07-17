@@ -17,6 +17,9 @@
     <meta property="og:type" content="{{ $meta->openGraphType }}">
     <meta property="og:site_name" content="{{ config('seo.site_name') }}">
     <meta property="og:locale" content="pl_PL">
+    @if (filled(config('services.facebook.client_id')))
+        <meta property="fb:app_id" content="{{ config('services.facebook.client_id') }}">
+    @endif
     <meta property="og:title" content="{{ $meta->title }}">
     <meta property="og:description" content="{{ $meta->description }}">
     <meta property="og:url" content="{{ $meta->canonical }}">
