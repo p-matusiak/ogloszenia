@@ -96,6 +96,18 @@ return [
             'description' => 'Zaloguj się, aby zarządzać swoimi ogłoszeniami.',
             'indexable' => false,
         ],
+        'password.forgot' => [
+            'path' => 'przypomnij-haslo',
+            'title' => 'Reset hasła',
+            'description' => 'Poproś o link do ustawienia nowego hasła.',
+            'indexable' => false,
+        ],
+        'password.reset' => [
+            'path' => 'reset-hasla',
+            'title' => 'Ustaw nowe hasło',
+            'description' => 'Ustaw nowe hasło do konta.',
+            'indexable' => false,
+        ],
         'register' => [
             'path' => 'rejestracja',
             'title' => 'Rejestracja',

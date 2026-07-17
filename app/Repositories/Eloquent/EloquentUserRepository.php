@@ -7,6 +7,7 @@ namespace App\Repositories\Eloquent;
 use App\Models\User;
 use App\Repositories\Contracts\UserRepository;
 use App\Support\SellerSlugGenerator;
+use Illuminate\Support\Str;
 
 final class EloquentUserRepository implements UserRepository
 {
@@ -43,6 +44,16 @@ final class EloquentUserRepository implements UserRepository
         if (array_key_exists('name', $attributes) && (string) $attributes['name'] !== $previousName) {
             $this->syncSlugForNameChange($user->refresh(), $previousName);
         }
+
+        return $user->refresh();
+    }
+
+    public function updatePassword(User $user, string $password): User
+    {
+        $user->forceFill([
+            'password' => $password,
+            'remember_token' => Str::random(60),
+        ])->save();
 
         return $user->refresh();
     }

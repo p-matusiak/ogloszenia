@@ -47,7 +47,7 @@ Route::prefix('v1')->group(function (): void {
     Route::middleware('guest')->group(function (): void {
         Route::post('auth/register', [AuthController::class, 'register'])
             ->middleware(app()->isProduction() ? 'throttle:5,60' : 'throttle:30,1');
-        Route::post('auth/login', [AuthController::class, 'login'])->middleware('throttle:5,1');
+        Route::post('auth/login', [AuthController::class, 'login']);
         Route::post('auth/forgot-password', [PasswordResetController::class, 'sendLink'])->middleware('throttle:5,60');
         Route::post('auth/reset-password', [PasswordResetController::class, 'reset'])->middleware('throttle:5,60');
     });
