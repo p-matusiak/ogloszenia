@@ -21,6 +21,7 @@ const email = ref('')
 const password = ref('')
 const errors = ref<Record<string, string>>({})
 const generalError = ref<string | null>(null)
+const successMessage = ref<string | null>(null)
 
 /**
  * Poświadczenia z seedera są pomocą deweloperską i nie mogą trafić na produkcję.
@@ -30,6 +31,14 @@ const generalError = ref<string | null>(null)
 const showsSeededCredentials = import.meta.env.VITE_SHOW_SEED_CREDENTIALS === 'true'
 
 onMounted(() => {
+  if (typeof route.query.email === 'string') {
+    email.value = route.query.email
+  }
+
+  if (route.query.reset === '1') {
+    successMessage.value = t('auth.resetPassword.success')
+  }
+
   const oauthError = route.query.oauth_error
 
   if (oauthError === 'unconfigured') {
@@ -67,6 +76,14 @@ async function onSubmit(): Promise<void> {
     :title="t('auth.login.title')"
     :subtitle="t('auth.login.subtitle')"
   >
+    <Message
+      v-if="successMessage"
+      severity="success"
+      class="alert"
+    >
+      {{ successMessage }}
+    </Message>
+
     <Message
       v-if="generalError"
       severity="error"
@@ -118,6 +135,13 @@ async function onSubmit(): Promise<void> {
         >
           {{ errors.password }}
         </Message>
+
+        <RouterLink
+          class="login__forgot-link"
+          :to="{ name: 'password.forgot' }"
+        >
+          {{ t('auth.login.forgotPassword') }}
+        </RouterLink>
       </div>
 
       <Button
@@ -156,5 +180,16 @@ async function onSubmit(): Promise<void> {
 
 .alert--hint {
   margin: 1.25rem 0 0;
+}
+
+.login__forgot-link {
+  align-self: flex-end;
+  font-size: 0.8125rem;
+  color: var(--brand-blue);
+  text-decoration: none;
+}
+
+.login__forgot-link:hover {
+  color: var(--brand-orange);
 }
 </style>

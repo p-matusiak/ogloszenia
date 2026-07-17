@@ -3,7 +3,9 @@
 declare(strict_types=1);
 
 use App\Models\User;
+use App\Notifications\ResetPasswordNotification;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Password;
 
 it('registers a user and signs them in', function (): void {
     $this->postJson('/api/v1/auth/register', [
@@ -83,8 +85,33 @@ it('turns away an anonymous request for the current user', function (): void {
 
 it('emails a reset link without revealing whether the account exists', function (): void {
     Notification::fake();
-    User::factory()->create(['email' => 'jan@example.com']);
+    $user = User::factory()->create(['email' => 'jan@example.com']);
 
     $this->postJson('/api/v1/auth/forgot-password', ['email' => 'jan@example.com'])->assertOk();
     $this->postJson('/api/v1/auth/forgot-password', ['email' => 'nikt@example.com'])->assertOk();
+
+    Notification::assertSentTo($user, ResetPasswordNotification::class);
+});
+
+it('resets the password and allows signing in with the new one', function (): void {
+    $user = User::factory()->create([
+        'email' => 'jan@example.com',
+        'password' => 'stare-haslo-123',
+    ]);
+
+    $token = Password::broker()->createToken($user);
+
+    $this->postJson('/api/v1/auth/reset-password', [
+        'email' => 'jan@example.com',
+        'token' => $token,
+        'password' => 'nowe-haslo-123',
+        'password_confirmation' => 'nowe-haslo-123',
+    ])->assertOk();
+
+    $this->postJson('/api/v1/auth/login', [
+        'email' => 'jan@example.com',
+        'password' => 'nowe-haslo-123',
+    ])->assertOk();
+
+    $this->assertAuthenticated();
 });

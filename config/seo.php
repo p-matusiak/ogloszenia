@@ -3,9 +3,9 @@
 declare(strict_types=1);
 
 return [
-    'site_name' => env('APP_NAME', 'Zunto'),
+    'site_name' => env('APP_NAME', 'Zunto.pl'),
 
-    'default_description' => 'Zunto — serwis ogłoszeń drobnych. Dodawaj, przeglądaj i wyszukuj ogłoszenia.',
+    'default_description' => 'Zunto.pl — darmowe ogłoszenia lokalne. Dodawaj, przeglądaj i wyszukuj ogłoszenia.',
 
     /*
      * Sitemapa i kanały RSS są identyczne dla każdego odwiedzającego, a każda
@@ -68,8 +68,8 @@ return [
     'pages' => [
         'landing' => [
             'path' => '/',
-            'title' => null,
-            'description' => 'Zunto — kupuj, sprzedawaj i znajdź oferty lokalnie. Tysiące ogłoszeń drobnych w Twojej okolicy.',
+            'title' => 'Darmowe ogłoszenia',
+            'description' => 'Zunto.pl — darmowe ogłoszenia lokalne. Kupuj, sprzedawaj i znajduj oferty w swojej okolicy.',
             'indexable' => true,
         ],
         'listings' => [
@@ -94,6 +94,18 @@ return [
             'path' => 'logowanie',
             'title' => 'Logowanie',
             'description' => 'Zaloguj się, aby zarządzać swoimi ogłoszeniami.',
+            'indexable' => false,
+        ],
+        'password.forgot' => [
+            'path' => 'przypomnij-haslo',
+            'title' => 'Reset hasła',
+            'description' => 'Poproś o link do ustawienia nowego hasła.',
+            'indexable' => false,
+        ],
+        'password.reset' => [
+            'path' => 'reset-hasla',
+            'title' => 'Ustaw nowe hasło',
+            'description' => 'Ustaw nowe hasło do konta.',
             'indexable' => false,
         ],
         'register' => [

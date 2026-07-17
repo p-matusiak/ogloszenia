@@ -108,6 +108,18 @@ const routes: RouteRecordRaw[] = [
     meta: { titleKey: 'routes.login' },
   },
   {
+    path: '/przypomnij-haslo',
+    name: 'password.forgot',
+    component: () => import('@/views/ForgotPasswordView.vue'),
+    meta: { titleKey: 'routes.passwordForgot' },
+  },
+  {
+    path: '/reset-hasla',
+    name: 'password.reset',
+    component: () => import('@/views/ResetPasswordView.vue'),
+    meta: { titleKey: 'routes.passwordReset' },
+  },
+  {
     path: '/rejestracja',
     name: 'register',
     component: () => import('@/views/RegisterView.vue'),

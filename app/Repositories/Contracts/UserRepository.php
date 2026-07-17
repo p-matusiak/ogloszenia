@@ -18,6 +18,8 @@ interface UserRepository
      */
     public function updateAttributes(User $user, array $attributes): User;
 
+    public function updatePassword(User $user, string $password): User;
+
     public function clearEmailVerification(User $user): void;
 
     public function findPublicSellerBySlug(string $slug): ?User;
