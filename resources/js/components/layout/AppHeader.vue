@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import Button from 'primevue/button'
+import Drawer from 'primevue/drawer'
 import IconField from 'primevue/iconfield'
 import InputIcon from 'primevue/inputicon'
 import InputText from 'primevue/inputtext'
@@ -31,6 +32,7 @@ const favorites = useFavoritesStore()
 const conversations = useConversationsStore()
 const { isAuthenticated, isResolved, user } = storeToRefs(auth)
 const { isDark, toggle } = useTheme()
+const isMobileMenuOpen = ref(false)
 
 /** Panel admina tylko po ustaleniu sesji i wyłącznie dla kont z `is_admin`. */
 const showAdminPanel = computed(
@@ -95,7 +97,12 @@ async function logout(): Promise<void> {
   await auth.logout()
   favorites.reset()
   conversations.reset()
+  isMobileMenuOpen.value = false
   await router.push({ name: 'landing' }).catch(() => undefined)
+}
+
+function closeMobileMenu(): void {
+  isMobileMenuOpen.value = false
 }
 </script>
 
@@ -146,7 +153,7 @@ async function logout(): Promise<void> {
       </form>
 
       <nav class="actions">
-        <LanguageSwitcher />
+        <LanguageSwitcher class="actions__desktop-only" />
 
         <Button
           :icon="isDark ? 'pi pi-sun' : 'pi pi-moon'"
@@ -154,7 +161,18 @@ async function logout(): Promise<void> {
           severity="secondary"
           text
           rounded
+          class="actions__theme"
           @click="toggle"
+        />
+
+        <Button
+          icon="pi pi-bars"
+          :aria-label="t('nav.menu')"
+          severity="secondary"
+          text
+          rounded
+          class="actions__mobile-menu-button"
+          @click="isMobileMenuOpen = true"
         />
 
         <template v-if="isResolved && !isAuthenticated">
@@ -182,6 +200,7 @@ async function logout(): Promise<void> {
         <RouterLink
           v-else-if="isAuthenticated"
           :to="{ name: 'ads.mine' }"
+          class="actions__mine"
         >
           <Button
             icon="pi pi-user"
@@ -195,6 +214,7 @@ async function logout(): Promise<void> {
         <RouterLink
           v-if="isAuthenticated"
           :to="{ name: 'favorites' }"
+          class="actions__favorites"
         >
           <Button
             icon="pi pi-heart"
@@ -208,6 +228,7 @@ async function logout(): Promise<void> {
         <RouterLink
           v-if="isAuthenticated"
           :to="{ name: 'messages' }"
+          class="actions__messages"
         >
           <Button
             icon="pi pi-comments"
@@ -264,6 +285,152 @@ async function logout(): Promise<void> {
         </RouterLink>
       </nav>
     </div>
+
+    <Drawer
+      v-model:visible="isMobileMenuOpen"
+      position="right"
+      :header="t('nav.menu')"
+      class="mobile-menu"
+    >
+      <div class="mobile-menu__content">
+        <div
+          v-if="isAuthenticated"
+          class="mobile-menu__profile"
+        >
+          <span class="mobile-menu__profile-label">{{ t('nav.profile') }}</span>
+          <strong class="mobile-menu__profile-name">{{ user?.name }}</strong>
+        </div>
+
+        <div class="mobile-menu__section">
+          <span class="mobile-menu__section-title">{{ t('nav.language') }}</span>
+          <LanguageSwitcher :compact="false" />
+        </div>
+
+        <button
+          type="button"
+          class="mobile-menu__link mobile-menu__link--button"
+          @click="toggle"
+        >
+          <i
+            :class="isDark ? 'pi pi-sun' : 'pi pi-moon'"
+            aria-hidden="true"
+          />
+          <span>{{ isDark ? t('nav.themeLight') : t('nav.themeDark') }}</span>
+        </button>
+
+        <div class="mobile-menu__links">
+          <RouterLink
+            v-if="isResolved && !isAuthenticated"
+            :to="{ name: 'login' }"
+            class="mobile-menu__link"
+            @click="closeMobileMenu"
+          >
+            <i
+              class="pi pi-sign-in"
+              aria-hidden="true"
+            />
+            <span>{{ t('nav.login') }}</span>
+          </RouterLink>
+
+          <RouterLink
+            v-if="isResolved && !isAuthenticated"
+            :to="{ name: 'register' }"
+            class="mobile-menu__link"
+            @click="closeMobileMenu"
+          >
+            <i
+              class="pi pi-user-plus"
+              aria-hidden="true"
+            />
+            <span>{{ t('nav.register') }}</span>
+          </RouterLink>
+
+          <RouterLink
+            v-if="isAuthenticated"
+            :to="{ name: 'ads.mine' }"
+            class="mobile-menu__link"
+            @click="closeMobileMenu"
+          >
+            <i
+              class="pi pi-list"
+              aria-hidden="true"
+            />
+            <span>{{ t('routes.adsMine') }}</span>
+          </RouterLink>
+
+          <RouterLink
+            v-if="isAuthenticated"
+            :to="{ name: 'favorites' }"
+            class="mobile-menu__link"
+            @click="closeMobileMenu"
+          >
+            <i
+              class="pi pi-heart"
+              aria-hidden="true"
+            />
+            <span>{{ t('nav.favorites') }}</span>
+          </RouterLink>
+
+          <RouterLink
+            v-if="isAuthenticated"
+            :to="{ name: 'messages' }"
+            class="mobile-menu__link"
+            @click="closeMobileMenu"
+          >
+            <i
+              class="pi pi-comments"
+              aria-hidden="true"
+            />
+            <span>
+              {{
+                conversations.unreadCount > 0
+                  ? t('nav.messagesUnread', { count: conversations.unreadCount })
+                  : t('nav.messages')
+              }}
+            </span>
+          </RouterLink>
+
+          <RouterLink
+            v-if="isAuthenticated"
+            :to="{ name: 'profile' }"
+            class="mobile-menu__link"
+            @click="closeMobileMenu"
+          >
+            <i
+              class="pi pi-user"
+              aria-hidden="true"
+            />
+            <span>{{ t('nav.profile') }}</span>
+          </RouterLink>
+
+          <RouterLink
+            v-if="showAdminPanel"
+            :to="{ name: 'admin' }"
+            class="mobile-menu__link"
+            @click="closeMobileMenu"
+          >
+            <i
+              class="pi pi-shield"
+              aria-hidden="true"
+            />
+            <span>{{ t('nav.admin') }}</span>
+          </RouterLink>
+
+          <button
+            v-if="isAuthenticated"
+            type="button"
+            class="mobile-menu__link mobile-menu__link--button"
+            @click="logout"
+          >
+            <i
+              class="pi pi-sign-out"
+              aria-hidden="true"
+            />
+            <span>{{ t('nav.logout') }}</span>
+          </button>
+        </div>
+      </div>
+    </Drawer>
   </header>
 </template>
 
@@ -363,6 +530,22 @@ async function logout(): Promise<void> {
   flex-shrink: 0;
 }
 
+.actions__desktop-only,
+.actions__mine,
+.actions__favorites,
+.actions__messages,
+.actions__profile-link,
+.actions__auth,
+.actions__admin,
+.actions__logout,
+.actions__theme {
+  display: none;
+}
+
+.actions__mobile-menu-button {
+  display: inline-flex;
+}
+
 .actions :deep(.p-button.p-button-text.p-button-secondary) {
   color: var(--text-muted);
 }
@@ -376,44 +559,81 @@ async function logout(): Promise<void> {
   background: transparent;
 }
 
-.actions__profile-name {
-  display: none;
-}
-
 .actions__profile-link {
   text-decoration: none;
   color: inherit;
 }
 
-.actions__auth :deep(.p-button-label),
 .actions__cta :deep(.p-button-label),
-.actions__logout :deep(.p-button-label),
-.actions__admin :deep(.p-button-label) {
+.actions__mobile-menu-button :deep(.p-button-label) {
   display: none;
 }
 
-@media (width >= 40rem) {
-  .actions__auth :deep(.p-button-label),
-  .actions__logout :deep(.p-button-label),
-  .actions__admin :deep(.p-button-label) {
-    display: inline;
-  }
-
-  .actions__auth :deep(.p-button-icon) {
-    display: none;
-  }
+.mobile-menu__content {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
 }
 
-@media (width >= 48rem) {
-  .actions__profile-name {
-    display: inline-block;
-    max-width: 8rem;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    font-size: 0.875rem;
-    font-weight: 600;
-  }
+.mobile-menu__profile {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.875rem 1rem;
+  border-radius: 0.75rem;
+  background: color-mix(in srgb, var(--brand-blue) 10%, var(--surface-muted));
+}
+
+.mobile-menu__profile-label,
+.mobile-menu__section-title {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+}
+
+.mobile-menu__profile-name {
+  font-size: 1rem;
+  line-height: 1.4;
+}
+
+.mobile-menu__section {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.875rem 1rem;
+  border: 1px solid var(--surface-border);
+  border-radius: 0.75rem;
+  background: var(--surface-card);
+}
+
+.mobile-menu__links {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.mobile-menu__link {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--surface-border);
+  border-radius: 0.75rem;
+  background: var(--surface-card);
+  color: inherit;
+  text-decoration: none;
+  font: inherit;
+  text-align: left;
+  box-sizing: border-box;
+}
+
+.mobile-menu__link:hover {
+  background: var(--surface-muted);
+}
+
+.mobile-menu__link--button {
+  cursor: pointer;
 }
 
 @media (width >= 62rem) {
@@ -432,6 +652,42 @@ async function logout(): Promise<void> {
   .finder {
     max-width: 42rem;
     justify-self: stretch;
+  }
+
+  .actions__desktop-only,
+  .actions__mine,
+  .actions__favorites,
+  .actions__messages,
+  .actions__profile-link,
+  .actions__auth,
+  .actions__logout,
+  .actions__admin,
+  .actions__theme {
+    display: inline-flex;
+  }
+
+  .actions__profile-name {
+    display: inline-block;
+    max-width: 8rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.875rem;
+    font-weight: 600;
+  }
+
+  .actions__auth :deep(.p-button-label),
+  .actions__logout :deep(.p-button-label),
+  .actions__admin :deep(.p-button-label) {
+    display: inline;
+  }
+
+  .actions__auth :deep(.p-button-icon) {
+    display: none;
+  }
+
+  .actions__mobile-menu-button {
+    display: none;
   }
 
   .actions__cta :deep(.p-button-label) {

@@ -24,6 +24,7 @@ const messages = {
     admin: 'Admin panel',
     logout: 'Log out',
     addAd: 'Post an ad',
+    menu: 'Menu',
     categories: 'Categories',
     allCategories: 'All categories',
     language: 'Language',

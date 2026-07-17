@@ -421,6 +421,13 @@ watchEffect(() =>
   overflow: hidden;
 }
 
+@media (width < 62rem) {
+  .results {
+    border-inline: 0;
+    border-radius: 0;
+  }
+}
+
 .results__header {
   display: flex;
   flex-direction: column;
@@ -544,6 +551,26 @@ watchEffect(() =>
 .results__list {
   display: flex;
   flex-direction: column;
+}
+
+@media (width < 62rem) {
+  .results__header,
+  .results__toolbar,
+  .results__chips {
+    padding-inline: 1rem;
+  }
+
+  .results__grid {
+    padding-inline: 1rem;
+  }
+
+  .results__list {
+    padding-inline: 0;
+  }
+
+  .results__pager {
+    padding-inline: 1rem;
+  }
 }
 
 .results__block {

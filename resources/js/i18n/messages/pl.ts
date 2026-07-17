@@ -29,6 +29,7 @@ const messages = {
     admin: 'Panel admina',
     logout: 'Wyloguj',
     addAd: 'Dodaj ogłoszenie',
+    menu: 'Menu',
     categories: 'Kategorie',
     allCategories: 'Wszystkie kategorie',
     language: 'Język',

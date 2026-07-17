@@ -24,6 +24,7 @@ const messages = {
     admin: 'Панель администратора',
     logout: 'Выйти',
     addAd: 'Добавить объявление',
+    menu: 'Меню',
     categories: 'Категории',
     allCategories: 'Все категории',
     language: 'Язык',

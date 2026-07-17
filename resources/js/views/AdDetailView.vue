@@ -299,6 +299,12 @@ watch(() => props.slug, (slug) => {
   color: var(--text-muted);
 }
 
+@media (width < 62rem) {
+  .crumbs {
+    padding-inline: 1rem;
+  }
+}
+
 .crumbs a {
   color: inherit;
   text-decoration: none;
@@ -335,6 +341,20 @@ watch(() => props.slug, (slug) => {
 
 .detail__body {
   padding: var(--card-padding);
+}
+
+@media (width < 62rem) {
+  .detail__body,
+  .more-seller {
+    border-inline: 0;
+    border-radius: 0;
+  }
+
+  .detail__body,
+  .more-seller,
+  .detail__side {
+    width: 100%;
+  }
 }
 
 .detail__title {
