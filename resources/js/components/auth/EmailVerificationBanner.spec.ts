@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import EmailVerificationBanner from '@/components/auth/EmailVerificationBanner.vue'
 import { useAuthStore } from '@/stores/auth'
+import { createTestI18n } from '@/testing/i18n'
 import type { User } from '@/types/api'
 
 const add = vi.hoisted(() => vi.fn())
@@ -39,6 +40,7 @@ function mountBanner(state: State) {
       plugins: [
         PrimeVue,
         ToastService,
+        createTestI18n(),
         createTestingPinia({
           createSpy: vi.fn,
           initialState: { auth: { ...state, isLoading: false } },
