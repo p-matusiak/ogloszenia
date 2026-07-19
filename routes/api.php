@@ -31,7 +31,8 @@ Route::prefix('v1')->group(function (): void {
 
     Route::get('ads', [AdsController::class, 'index']);
     Route::get('ads/{ad}/more-from-seller', AdMoreFromSellerController::class);
-    Route::get('ads/{ad}', [AdsController::class, 'show']);
+    Route::get('ads/{slug}', [AdsController::class, 'show'])
+        ->where('slug', '[a-z0-9-]+');
     Route::get('sellers/{seller}', [SellersController::class, 'show'])
         ->where('seller', '[a-z0-9-]+');
 

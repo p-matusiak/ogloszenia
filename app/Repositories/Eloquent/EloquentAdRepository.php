@@ -6,6 +6,7 @@ namespace App\Repositories\Eloquent;
 
 use App\Enums\AdStatus;
 use App\Models\Ad;
+use App\Models\AdSlugHistory;
 use App\Repositories\Contracts\AdRepository;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator as LengthAwarePaginatorContract;
 use Illuminate\Database\Eloquent\Builder;
@@ -24,6 +25,27 @@ final class EloquentAdRepository implements AdRepository
 
     /** Karty powiązanych ogłoszeń nie pokazują kategorii — sam primaryImage wystarczy. */
     private const array RELATED_RELATIONS = ['primaryImage'];
+
+    /** Szczegół ogłoszenia musi od razu mieć komplet danych do API. */
+    private const array DETAIL_RELATIONS = ['category.ancestors', 'images', 'user'];
+
+    public function findDetailBySlug(string $slug): ?Ad
+    {
+        return Ad::query()
+            ->with(self::DETAIL_RELATIONS)
+            ->where('slug', $slug)
+            ->first();
+    }
+
+    public function findByHistoricalSlug(string $slug): ?Ad
+    {
+        $history = AdSlugHistory::query()
+            ->with('ad')
+            ->where('slug', $slug)
+            ->first();
+
+        return $history?->ad;
+    }
 
     /**
      * Lista moderatora obejmuje wszystkie statusy (aktywne, oczekujące,
@@ -66,6 +88,16 @@ final class EloquentAdRepository implements AdRepository
         $ad->save();
 
         return $ad->refresh();
+    }
+
+    public function markAsDeleted(Ad $ad): void
+    {
+        $ad->update(['status' => AdStatus::Deleted]);
+    }
+
+    public function incrementViews(Ad $ad): void
+    {
+        $ad->increment('views_count');
     }
 
     public function countCreatedTodayForUser(int $userId): int
