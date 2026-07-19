@@ -7,11 +7,14 @@ namespace App\Providers;
 use App\Services\CachedSettingsRepository;
 use App\Services\Contracts\SettingsRepository;
 use App\Services\Seo\SeoPresenter;
+use App\Support\AppVersion;
+use Illuminate\Foundation\Http\Events\RequestHandled;
 use Illuminate\Contracts\View\View as ViewContract;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Middleware\TrustProxies;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\View;
@@ -30,6 +33,7 @@ final class AppServiceProvider extends ServiceProvider
         $this->configureUrlsBehindProxy();
         $this->configureEloquentStrictness();
         $this->configureSeoDefaults();
+        $this->configureAppVersionHeader();
     }
 
     /**
@@ -99,6 +103,13 @@ final class AppServiceProvider extends ServiceProvider
                 'model' => $model::class,
                 'relation' => $relation,
             ]);
+        });
+    }
+
+    private function configureAppVersionHeader(): void
+    {
+        Event::listen(RequestHandled::class, function (RequestHandled $event): void {
+            $event->response->headers->set('X-App-Version', AppVersion::resolve());
         });
     }
 }
