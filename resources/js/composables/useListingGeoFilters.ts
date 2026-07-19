@@ -77,7 +77,7 @@ export async function buildLocationFilters(
 ): Promise<Pick<AdFilters, 'location' | 'lat' | 'lng' | 'radius_km'>> {
   const trimmed = label?.trim()
 
-  if (isWholePolandLabel(trimmed)) {
+  if (trimmed === undefined || trimmed === '' || isWholePolandLabel(trimmed)) {
     return clearGeoFilters()
   }
 
