@@ -30,4 +30,12 @@ describe('AdDeliveryPanel', () => {
 
     expect(wrapper.find('section.delivery-panel').exists()).toBe(false)
   })
+
+  it('does not render an unselected method even if a stray price exists for it', () => {
+    const wrapper = mountPanel(['personal'], { courier: '15.00' })
+
+    expect(wrapper.text()).toContain('Odbiór osobisty')
+    expect(wrapper.text()).not.toContain('Kurier')
+    expect(wrapper.text()).not.toContain('15 zł')
+  })
 })
