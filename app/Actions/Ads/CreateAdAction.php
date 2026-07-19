@@ -30,6 +30,7 @@ final readonly class CreateAdAction
         private SettingsRepository $settings,
         private AdSlugGenerator $slugGenerator,
         private StoreAdImagesAction $storeImages,
+        private StoreTemporaryAdImagesAction $storeTemporaryImages,
         private AdContentModerator $moderator,
         private AdPublicationDecisionResolver $publication,
         private SyncUserDefaultLocationAction $syncDefaultLocation,
@@ -38,20 +39,22 @@ final readonly class CreateAdAction
     /**
      * @param  array<string, mixed>  $data
      * @param  list<UploadedFile>  $images
+     * @param  list<string>  $temporaryImages
      *
      * @throws DailyAdLimitReachedException
      */
-    public function execute(User $user, array $data, array $images = []): Ad
+    public function execute(User $user, array $data, array $images = [], array $temporaryImages = []): Ad
     {
         // Serialised per user: two simultaneous submissions must not both pass
         // the daily-limit check on the same remaining slot.
-        return Cache::lock("ads:create:{$user->id}", 10)->block(5, function () use ($user, $data, $images): Ad {
+        return Cache::lock("ads:create:{$user->id}", 10)->block(5, function () use ($user, $data, $images, $temporaryImages): Ad {
             $this->guardDailyLimit($user);
 
-            $ad = DB::transaction(function () use ($user, $data, $images): Ad {
+            $ad = DB::transaction(function () use ($user, $data, $images, $temporaryImages): Ad {
                 $ad = $this->ads->create($this->attributes($user, $data));
 
                 $this->storeImages->execute($ad, $images);
+                $this->storeTemporaryImages->execute($ad, $user, $temporaryImages);
                 $this->syncDefaultLocation->execute($user, $data);
 
                 return $ad;

@@ -19,7 +19,7 @@ export function emptyAdForm(): AdFormValues {
     use_custom_phone: false,
     contact_phone: '',
     accept_terms: false,
-    images: [],
+    temporary_images: [],
     removed_image_ids: [],
   }
 }
@@ -60,7 +60,7 @@ export function adToForm(ad: Ad): AdFormValues {
     contact_phone: ad.contact_phone ?? '',
     // Already accepted when the ad was first published.
     accept_terms: true,
-    images: [],
+    temporary_images: [],
     removed_image_ids: [],
   }
 }

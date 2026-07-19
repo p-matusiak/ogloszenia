@@ -8,6 +8,7 @@ use App\Enums\AdCondition;
 use App\Enums\DeliveryMethod;
 use App\Models\User;
 use App\Repositories\Contracts\CategoryRepository;
+use App\Support\TemporaryAdImageStorage;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Config;
@@ -80,7 +81,21 @@ class StoreAdRequest extends FormRequest
 
             'images' => ['array', 'max:'.$images['max_per_ad']],
             'images.*' => ['image', 'mimes:'.implode(',', $images['mimes']), 'max:'.$images['max_size_kb']],
+            'temporary_images' => ['array', 'max:'.$images['max_per_ad']],
+            'temporary_images.*' => ['string'],
         ];
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function temporaryImages(): array
+    {
+        $tokens = $this->input('temporary_images', []);
+
+        return is_array($tokens)
+            ? array_values(array_filter($tokens, static fn (mixed $token): bool => is_string($token) && $token !== ''))
+            : [];
     }
 
     /**
@@ -91,6 +106,8 @@ class StoreAdRequest extends FormRequest
         return [
             fn (Validator $validator) => $this->validateCategoryIsLeaf($validator),
             fn (Validator $validator) => $this->validateDeliveryPriceKeys($validator),
+            fn (Validator $validator) => $this->validateTemporaryImages($validator),
+            fn (Validator $validator) => $this->validateTotalImageCount($validator),
         ];
     }
 
@@ -134,6 +151,34 @@ class StoreAdRequest extends FormRequest
                     'Cena dotyczy metody dostawy, która nie została wybrana.',
                 );
             }
+        }
+    }
+
+    private function validateTemporaryImages(Validator $validator): void
+    {
+        if ($validator->errors()->isNotEmpty()) {
+            return;
+        }
+
+        $storage = app(TemporaryAdImageStorage::class);
+
+        foreach ($this->temporaryImages() as $index => $token) {
+            if (! $storage->belongsToUser($this->author(), $token)) {
+                $validator->errors()->add(
+                    "temporary_images.{$index}",
+                    'Jedno ze zdjęć tymczasowych wygasło albo nie należy do bieżącego użytkownika.',
+                );
+            }
+        }
+    }
+
+    private function validateTotalImageCount(Validator $validator): void
+    {
+        $maximum = Config::integer('ads.images.max_per_ad');
+        $count = count($this->images()) + count($this->temporaryImages());
+
+        if ($count > $maximum) {
+            $validator->errors()->add('images', "An ad may hold at most {$maximum} images.");
         }
     }
 }

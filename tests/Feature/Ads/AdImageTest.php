@@ -88,3 +88,32 @@ it('deletes removed images and closes the gap in their positions', function (): 
     expect($second->refresh()->position)->toBe(0)
         ->and($third->refresh()->position)->toBe(1);
 });
+
+it('accepts temporary images during edit and appends them after existing ones', function (): void {
+    $user = User::factory()->create();
+    $ad = Ad::factory()->for($user)->create();
+    AdImage::factory()->for($ad)->create(['position' => 0, 'original_name' => 'stare.jpg']);
+
+    $uploadResponse = $this->actingAs($user)
+        ->post('/api/v1/ads/temp-images', [
+            'images' => [UploadedFile::fake()->image('nowe.png')],
+        ])
+        ->assertCreated();
+
+    $token = $uploadResponse->json('data.0.token');
+
+    $this->actingAs($user)
+        ->post("/api/v1/ads/{$ad->slug}", validAdPayload($ad->category, [
+            'title' => $ad->title,
+            'temporary_images' => [$token],
+        ]))
+        ->assertOk()
+        ->assertJsonCount(2, 'data.images');
+
+    $images = $ad->refresh()->images()->orderBy('position')->get();
+
+    expect($images)->toHaveCount(2)
+        ->and($images[0]->position)->toBe(0)
+        ->and($images[1]->position)->toBe(1)
+        ->and($images[1]->original_name)->toBe('nowe.png');
+});
