@@ -14,6 +14,7 @@ final class EloquentOAuthAccountRepository implements OAuthAccountRepository
     public function findByProviderUser(OAuthProvider $provider, string $providerUserId): ?OAuthAccount
     {
         return OAuthAccount::query()
+            ->with('user')
             ->where('provider', $provider->value)
             ->where('provider_user_id', $providerUserId)
             ->first();
@@ -28,6 +29,11 @@ final class EloquentOAuthAccountRepository implements OAuthAccountRepository
         ]);
         $account->save();
 
-        return $account->refresh();
+        return $account->fresh(['user']);
+    }
+
+    public function delete(OAuthAccount $account): void
+    {
+        $account->delete();
     }
 }

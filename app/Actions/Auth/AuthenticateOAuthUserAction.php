@@ -32,7 +32,13 @@ final class AuthenticateOAuthUserAction
         $existingAccount = $this->oauthAccounts->findByProviderUser($provider, $providerUserId);
 
         if ($existingAccount !== null) {
-            return $existingAccount->user;
+            $existingUser = $existingAccount->user;
+
+            if ($existingUser instanceof User && ! $existingUser->trashed()) {
+                return $existingUser;
+            }
+
+            $this->oauthAccounts->delete($existingAccount);
         }
 
         $email = $socialUser->getEmail();
