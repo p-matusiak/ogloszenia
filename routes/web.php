@@ -18,12 +18,10 @@ use Illuminate\Support\Facades\Route;
 // brute-forcing the email hash of a known user id.
 Route::get('/auth/{provider}/redirect', [OAuthController::class, 'redirect'])
     ->whereIn('provider', ['google', 'facebook'])
-    ->middleware('throttle:10,1')
     ->name('oauth.redirect');
 
 Route::get('/auth/{provider}/callback', [OAuthController::class, 'callback'])
     ->whereIn('provider', ['google', 'facebook'])
-    ->middleware('throttle:10,1')
     ->name('oauth.callback');
 
 Route::get('/email/weryfikacja/{id}/{hash}', EmailVerificationController::class)
