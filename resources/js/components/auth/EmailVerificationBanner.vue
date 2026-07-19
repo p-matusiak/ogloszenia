@@ -3,10 +3,12 @@ import Button from 'primevue/button'
 import Message from 'primevue/message'
 import { storeToRefs } from 'pinia'
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 import { useResendVerification } from '@/composables/useEmailVerification'
 import { useAuthStore } from '@/stores/auth'
 
+const { t } = useI18n()
 const auth = useAuthStore()
 const { user, isLoading, isResolved, isAuthenticated, isEmailVerified } = storeToRefs(auth)
 const { resend } = useResendVerification()
@@ -25,11 +27,10 @@ const isVisible = computed(() => isResolved.value && isAuthenticated.value && !i
   >
     <div class="verify__body">
       <span>
-        Potwierdź adres <strong>{{ user?.email }}</strong>, aby publikować ogłoszenia.
-        Sprawdź skrzynkę i folder spam.
+        {{ t('auth.verification.banner', { email: user?.email ?? '' }) }}
       </span>
       <Button
-        label="Wyślij link ponownie"
+        :label="t('auth.verification.resend')"
         size="small"
         severity="warn"
         outlined

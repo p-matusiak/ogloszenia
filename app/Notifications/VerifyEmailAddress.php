@@ -11,6 +11,7 @@ use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\Lang;
 use Illuminate\Support\Facades\URL;
 
 /**
@@ -21,7 +22,7 @@ final class VerifyEmailAddress extends Notification implements ShouldQueue
 {
     use Queueable;
 
-    public function __construct()
+    public function __construct(private readonly string $mailLocale = 'pl')
     {
         // The compose stack runs a worker on this queue; heavy jobs must never
         // delay an activation mail the user is waiting for.
@@ -41,13 +42,13 @@ final class VerifyEmailAddress extends Notification implements ShouldQueue
         $minutes = Config::integer('auth.verification.expire');
 
         return (new MailMessage)
-            ->subject('Potwierdź swój adres e-mail')
-            ->greeting("Cześć {$notifiable->name}!")
-            ->line('Dziękujemy za założenie konta. Zanim opublikujesz pierwsze ogłoszenie, potwierdź swój adres e-mail.')
-            ->action('Potwierdź adres e-mail', $this->verificationUrl($notifiable))
-            ->line("Link jest ważny przez {$minutes} minut.")
-            ->line('Jeżeli to nie Ty zakładałeś konto, zignoruj tę wiadomość — nic się nie stanie.')
-            ->salutation('Pozdrawiamy');
+            ->subject(Lang::get('mail.verify_email.subject', locale: $this->mailLocale))
+            ->greeting(Lang::get('mail.common.greeting_named', ['name' => $notifiable->name], $this->mailLocale))
+            ->line(Lang::get('mail.verify_email.intro', locale: $this->mailLocale))
+            ->action(Lang::get('mail.verify_email.action', locale: $this->mailLocale), $this->verificationUrl($notifiable))
+            ->line(Lang::get('mail.common.link_expiry_minutes', ['minutes' => $minutes], $this->mailLocale))
+            ->line(Lang::get('mail.verify_email.outro', locale: $this->mailLocale))
+            ->salutation(Lang::get('mail.common.salutation', locale: $this->mailLocale));
     }
 
     /**

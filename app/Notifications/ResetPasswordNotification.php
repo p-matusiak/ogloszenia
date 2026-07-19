@@ -10,12 +10,16 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\Lang;
 
 final class ResetPasswordNotification extends Notification implements ShouldQueue
 {
     use Queueable;
 
-    public function __construct(private readonly string $token)
+    public function __construct(
+        private readonly string $token,
+        private readonly string $mailLocale = 'pl',
+    )
     {
         $this->onQueue('notifications');
     }
@@ -33,13 +37,13 @@ final class ResetPasswordNotification extends Notification implements ShouldQueu
         $minutes = Config::integer('auth.passwords.'.Config::string('auth.defaults.passwords').'.expire');
 
         return (new MailMessage)
-            ->subject('Reset hasła')
-            ->greeting("Cześć {$notifiable->name}!")
-            ->line('Otrzymaliśmy prośbę o ustawienie nowego hasła do Twojego konta.')
-            ->action('Ustaw nowe hasło', $this->resetUrl($notifiable))
-            ->line("Link jest ważny przez {$minutes} minut.")
-            ->line('Jeżeli to nie Ty wysłałeś tę prośbę, zignoruj tę wiadomość. Twoje hasło pozostanie bez zmian.')
-            ->salutation('Pozdrawiamy');
+            ->subject(Lang::get('mail.reset_password.subject', locale: $this->mailLocale))
+            ->greeting(Lang::get('mail.common.greeting_named', ['name' => $notifiable->name], $this->mailLocale))
+            ->line(Lang::get('mail.reset_password.intro', locale: $this->mailLocale))
+            ->action(Lang::get('mail.reset_password.action', locale: $this->mailLocale), $this->resetUrl($notifiable))
+            ->line(Lang::get('mail.common.link_expiry_minutes', ['minutes' => $minutes], $this->mailLocale))
+            ->line(Lang::get('mail.reset_password.outro', locale: $this->mailLocale))
+            ->salutation(Lang::get('mail.common.salutation', locale: $this->mailLocale));
     }
 
     private function resetUrl(User $notifiable): string

@@ -95,12 +95,12 @@ final class User extends Authenticatable implements MustVerifyEmail
      */
     public function sendEmailVerificationNotification(): void
     {
-        $this->notify(new VerifyEmailAddress);
+        $this->notify(new VerifyEmailAddress(app()->getLocale()));
     }
 
     public function sendPasswordResetNotification($token): void
     {
-        $this->notify(new ResetPasswordNotification((string) $token));
+        $this->notify(new ResetPasswordNotification((string) $token, app()->getLocale()));
     }
 
     public function avatarUrl(): ?string
