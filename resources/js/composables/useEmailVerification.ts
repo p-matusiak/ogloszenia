@@ -1,5 +1,6 @@
 import { useToast } from 'primevue/usetoast'
 import type { LocationQueryValue } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 
 import { errorMessage } from '@/api/client'
 import { useAuthStore } from '@/stores/auth'
@@ -55,21 +56,22 @@ export function isVerified(screen: VerificationScreen): boolean {
 export function useResendVerification(): { resend: () => Promise<void> } {
   const auth = useAuthStore()
   const toast = useToast()
+  const { t } = useI18n()
 
   async function resend(): Promise<void> {
     try {
       await auth.resendVerification()
       toast.add({
         severity: 'success',
-        summary: 'Wysłano',
-        detail: `Link aktywacyjny poleciał na ${auth.user?.email ?? 'Twój adres'}.`,
+        summary: t('common.save'),
+        detail: t('auth.verification.banner', { email: auth.user?.email ?? t('auth.login.email') }),
         life: 6000,
       })
     } catch (caught: unknown) {
       toast.add({
         severity: 'error',
-        summary: 'Nie udało się wysłać',
-        detail: errorMessage(caught, 'Spróbuj ponownie za chwilę.'),
+        summary: t('auth.verification.resend'),
+        detail: errorMessage(caught, t('common.retry')),
         life: 6000,
       })
     }
@@ -79,44 +81,46 @@ export function useResendVerification(): { resend: () => Promise<void> } {
 }
 
 export function verificationCopy(screen: VerificationScreen): VerificationCopy {
+  const { t } = useI18n()
+
   switch (screen) {
     case 'verified':
       return {
-        title: 'Konto aktywowane',
-        subtitle: 'Adres e-mail został potwierdzony.',
-        body: 'Możesz już publikować ogłoszenia. Dziękujemy!',
+        title: t('auth.verification.verified.title'),
+        subtitle: t('auth.verification.verified.subtitle'),
+        body: t('auth.verification.verified.body'),
         icon: 'pi pi-check-circle',
         tone: 'success',
       }
     case 'already-verified':
       return {
-        title: 'Konto jest już aktywne',
-        subtitle: 'Ten adres potwierdzono wcześniej.',
-        body: 'Nie musisz nic robić — możesz korzystać z serwisu bez ograniczeń.',
+        title: t('auth.verification.alreadyVerified.title'),
+        subtitle: t('auth.verification.alreadyVerified.subtitle'),
+        body: t('auth.verification.alreadyVerified.body'),
         icon: 'pi pi-check-circle',
         tone: 'success',
       }
     case 'required':
       return {
-        title: 'Potwierdź adres e-mail',
-        subtitle: 'Ta sekcja wymaga aktywnego konta.',
-        body: 'Wysłaliśmy link aktywacyjny przy rejestracji. Sprawdź skrzynkę i folder spam albo poproś o nowy.',
+        title: t('auth.verification.required.title'),
+        subtitle: t('auth.verification.required.subtitle'),
+        body: t('auth.verification.required.body'),
         icon: 'pi pi-envelope',
         tone: 'pending',
       }
     case 'expired':
       return {
-        title: 'Link wygasł',
-        subtitle: 'Ten link aktywacyjny nie jest już ważny.',
-        body: 'Link jest ważny przez ograniczony czas. Wyślij nowy, aby dokończyć aktywację.',
+        title: t('auth.verification.expired.title'),
+        subtitle: t('auth.verification.expired.subtitle'),
+        body: t('auth.verification.expired.body'),
         icon: 'pi pi-clock',
         tone: 'failure',
       }
     case 'invalid':
       return {
-        title: 'Nieprawidłowy link',
-        subtitle: 'Nie rozpoznajemy tego linku aktywacyjnego.',
-        body: 'Sprawdź, czy adres skopiował się w całości. Możesz też poprosić o nowy link.',
+        title: t('auth.verification.invalid.title'),
+        subtitle: t('auth.verification.invalid.subtitle'),
+        body: t('auth.verification.invalid.body'),
         icon: 'pi pi-times-circle',
         tone: 'failure',
       }
