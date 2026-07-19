@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 
-import type { AdImage } from '@/types/api'
+import { errorMessage, validationErrors } from '@/api/client'
+import { deleteTemporaryAdImage, uploadTemporaryAdImages } from '@/api/modules/v1/ads'
+import type { AdImage, TemporaryAdUpload } from '@/types/api'
 
 const props = defineProps<{
-  files: File[]
+  uploads: TemporaryAdUpload[]
   existingImages: AdImage[]
   removedIds: number[]
   maxImages: number
@@ -12,60 +14,75 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  'update:files': [files: File[]]
+  'update:uploads': [uploads: TemporaryAdUpload[]]
   'remove-existing': [id: number]
 }>()
 
 const isDraggingFile = ref(false)
 const draggedIndex = ref<number | null>(null)
+const isUploading = ref(false)
+const deletingToken = ref<string | null>(null)
+const uploadError = ref<string | null>(null)
 
 const keptExisting = computed(() =>
   props.existingImages.filter((image) => !props.removedIds.includes(image.id)),
 )
 
-const total = computed(() => keptExisting.value.length + props.files.length)
+const total = computed(() => keptExisting.value.length + props.uploads.length)
 const remaining = computed(() => props.maxImages - total.value)
 
-/** Podgląd nowych plików; URL zwalniamy dopiero przy usunięciu miniatury. */
-const previews = new Map<File, string>()
-
-function previewOf(file: File): string {
-  let url = previews.get(file)
-  if (url === undefined) {
-    url = URL.createObjectURL(file)
-    previews.set(file, url)
-  }
-
-  return url
-}
-
-function accept(incoming: FileList | null): void {
-  if (incoming === null) {
+async function accept(incoming: FileList | null): Promise<void> {
+  if (incoming === null || remaining.value <= 0 || isUploading.value) {
     return
   }
 
-  emit('update:files', [...props.files, ...Array.from(incoming)].slice(0, remaining.value + props.files.length))
+  uploadError.value = null
+  isUploading.value = true
+
+  try {
+    const files = Array.from(incoming).slice(0, remaining.value)
+    const uploaded = await uploadTemporaryAdImages(files)
+    emit('update:uploads', [...props.uploads, ...uploaded])
+  } catch (caught: unknown) {
+    const fieldErrors = validationErrors(caught)
+    uploadError.value =
+      fieldErrors.images
+      ?? fieldErrors['images.0']
+      ?? errorMessage(caught, 'Nie udało się wgrać zdjęć.')
+  } finally {
+    isUploading.value = false
+  }
 }
 
-function onDrop(event: DragEvent): void {
+async function onDrop(event: DragEvent): Promise<void> {
   isDraggingFile.value = false
-  accept(event.dataTransfer?.files ?? null)
+  await accept(event.dataTransfer?.files ?? null)
 }
 
-function onPick(event: Event): void {
+async function onPick(event: Event): Promise<void> {
   const input = event.target as HTMLInputElement
-  accept(input.files)
+  await accept(input.files)
   input.value = ''
 }
 
-function removeFile(index: number): void {
-  const file = props.files[index]
-  if (file) {
-    URL.revokeObjectURL(previews.get(file) ?? '')
-    previews.delete(file)
+async function removeUpload(index: number): Promise<void> {
+  const upload = props.uploads[index]
+
+  if (upload === undefined) {
+    return
   }
 
-  emit('update:files', props.files.filter((_, i) => i !== index))
+  uploadError.value = null
+  deletingToken.value = upload.token
+
+  try {
+    await deleteTemporaryAdImage(upload.token)
+    emit('update:uploads', props.uploads.filter((_, currentIndex) => currentIndex !== index))
+  } catch (caught: unknown) {
+    uploadError.value = errorMessage(caught, 'Nie udało się usunąć tymczasowego zdjęcia.')
+  } finally {
+    deletingToken.value = null
+  }
 }
 
 /** Kolejność decyduje, które zdjęcie jest główne — stąd przeciąganie. */
@@ -77,11 +94,11 @@ function onReorderDrop(targetIndex: number): void {
     return
   }
 
-  const next = [...props.files]
+  const next = [...props.uploads]
   const [moved] = next.splice(from, 1)
-  if (moved) {
+  if (moved !== undefined) {
     next.splice(targetIndex, 0, moved)
-    emit('update:files', next)
+    emit('update:uploads', next)
   }
 }
 </script>
@@ -100,7 +117,7 @@ function onReorderDrop(targetIndex: number): void {
         accept="image/jpeg,image/png,image/webp"
         multiple
         class="dropzone__input"
-        :disabled="remaining <= 0"
+        :disabled="remaining <= 0 || isUploading"
         @change="onPick"
       >
       <i class="pi pi-cloud-upload dropzone__icon" />
@@ -113,7 +130,20 @@ function onReorderDrop(targetIndex: number): void {
       <p class="dropzone__hint">
         Dodaj do {{ maxImages }} zdjęć (JPG, PNG, WebP do {{ maxSizeMb }} MB)
       </p>
+      <p
+        v-if="isUploading"
+        class="dropzone__hint"
+      >
+        Wgrywanie zdjęć…
+      </p>
     </label>
+
+    <p
+      v-if="uploadError"
+      class="uploader__error"
+    >
+      {{ uploadError }}
+    </p>
 
     <ul
       v-if="total > 0"
@@ -139,8 +169,8 @@ function onReorderDrop(targetIndex: number): void {
       </li>
 
       <li
-        v-for="(file, index) in files"
-        :key="file.name + index"
+        v-for="(upload, index) in uploads"
+        :key="upload.token"
         class="thumb"
         :class="{ 'thumb--primary': keptExisting.length === 0 && index === 0 }"
         draggable="true"
@@ -149,7 +179,7 @@ function onReorderDrop(targetIndex: number): void {
         @drop.prevent="onReorderDrop(index)"
       >
         <img
-          :src="previewOf(file)"
+          :src="upload.preview_url"
           alt=""
         >
         <span
@@ -160,8 +190,9 @@ function onReorderDrop(targetIndex: number): void {
         <button
           type="button"
           class="thumb__remove"
-          :aria-label="`Usuń ${file.name}`"
-          @click="removeFile(index)"
+          :aria-label="`Usuń ${upload.original_name}`"
+          :disabled="deletingToken === upload.token"
+          @click="removeUpload(index)"
         >
           <i class="pi pi-times" />
         </button>
@@ -259,49 +290,57 @@ function onReorderDrop(targetIndex: number): void {
   position: absolute;
   top: 0.375rem;
   left: 0.375rem;
-  padding: 0.15rem 0.4rem;
-  border-radius: 0.25rem;
-  background: var(--p-primary-color);
-  color: #fff;
+  padding: 0.2rem 0.4rem;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.82);
+  color: white;
   font-size: 0.625rem;
   font-weight: 600;
 }
 
 .thumb__index {
   position: absolute;
-  bottom: 0.375rem;
   left: 0.375rem;
+  bottom: 0.375rem;
+  min-width: 1.35rem;
+  height: 1.35rem;
   display: grid;
   place-items: center;
-  width: 1.35rem;
-  height: 1.35rem;
-  border-radius: 50%;
-  background: #fff;
-  color: #111;
-  font-size: 0.7rem;
-  font-weight: 600;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  font-size: 0.6875rem;
+  font-weight: 700;
 }
 
 .thumb__remove {
   position: absolute;
-  top: 0.375rem;
-  right: 0.375rem;
+  top: 0.3rem;
+  right: 0.3rem;
+  width: 1.7rem;
+  height: 1.7rem;
   display: grid;
   place-items: center;
-  width: 1.5rem;
-  height: 1.5rem;
   border: 0;
-  border-radius: 50%;
-  background: rgb(0 0 0 / 60%);
-  color: #fff;
-  font-size: 0.65rem;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.8);
+  color: white;
   cursor: pointer;
+}
+
+.thumb--primary {
+  outline: 2px solid color-mix(in srgb, var(--p-primary-color) 55%, white);
+  outline-offset: 1px;
 }
 
 .uploader__hint {
   margin: 0;
-  text-align: right;
   font-size: 0.75rem;
   color: var(--text-muted);
+}
+
+.uploader__error {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--p-red-500);
 }
 </style>

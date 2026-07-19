@@ -40,8 +40,9 @@ final class AdsController extends Controller
     {
         $ad = $createAd->execute(
             user: $request->author(),
-            data: $request->safe()->except('images'),
+            data: $request->safe()->except(['images', 'temporary_images']),
             images: $request->images(),
+            temporaryImages: $request->temporaryImages(),
         );
 
         return (new AdResource($ad->load(['category.ancestors', 'images', 'user'])))
@@ -53,8 +54,9 @@ final class AdsController extends Controller
     {
         $updated = $updateAd->execute(
             ad: $ad,
-            data: $request->safe()->except('images'),
+            data: $request->safe()->except(['images', 'temporary_images']),
             newImages: $request->images(),
+            temporaryImages: $request->temporaryImages(),
         );
 
         return new AdResource($updated->load(['category.ancestors', 'images', 'user']));

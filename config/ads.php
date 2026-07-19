@@ -35,6 +35,10 @@ return [
 
         'disk' => env('ADS_IMAGE_DISK', 'public'),
 
+        'temporary_prefix' => env('ADS_TEMP_IMAGE_PREFIX', 'ads/tmp'),
+
+        'temporary_ttl_minutes' => (int) env('ADS_TEMP_IMAGE_TTL_MINUTES', 1440),
+
         'mimes' => ['jpg', 'jpeg', 'png', 'webp'],
     ],
 

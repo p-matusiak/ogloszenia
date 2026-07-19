@@ -22,6 +22,7 @@ use App\Http\Controllers\Api\V1\FavoritesController;
 use App\Http\Controllers\Api\V1\MyAdsController;
 use App\Http\Controllers\Api\V1\OAuthProvidersController;
 use App\Http\Controllers\Api\V1\PasswordResetController;
+use App\Http\Controllers\Api\V1\TemporaryAdImagesController;
 use App\Http\Controllers\Api\V1\SellersController;
 use Illuminate\Support\Facades\Route;
 
@@ -87,6 +88,8 @@ Route::prefix('v1')->group(function (): void {
         // must not be able to put contact details in front of visitors. Reading
         // and deleting stay open, so nobody is locked out of their own data.
         Route::middleware('verified')->group(function (): void {
+            Route::post('ads/temp-images', [TemporaryAdImagesController::class, 'store']);
+            Route::delete('ads/temp-images/{token}', [TemporaryAdImagesController::class, 'destroy']);
             Route::post('ads/suggest-category', AdCategorySuggestionController::class)
                 ->middleware('throttle:30,1');
             Route::post('ads', [AdsController::class, 'store']);

@@ -1,8 +1,8 @@
 import { useToast } from 'primevue/usetoast'
 import type { LocationQueryValue } from 'vue-router'
-import { useI18n } from 'vue-i18n'
 
 import { errorMessage } from '@/api/client'
+import { i18n } from '@/i18n'
 import { useAuthStore } from '@/stores/auth'
 import type { EmailVerificationStatus } from '@/types/api'
 
@@ -56,7 +56,7 @@ export function isVerified(screen: VerificationScreen): boolean {
 export function useResendVerification(): { resend: () => Promise<void> } {
   const auth = useAuthStore()
   const toast = useToast()
-  const { t } = useI18n()
+  const { t } = i18n.global
 
   async function resend(): Promise<void> {
     try {
@@ -81,7 +81,7 @@ export function useResendVerification(): { resend: () => Promise<void> } {
 }
 
 export function verificationCopy(screen: VerificationScreen): VerificationCopy {
-  const { t } = useI18n()
+  const { t } = i18n.global
 
   switch (screen) {
     case 'verified':

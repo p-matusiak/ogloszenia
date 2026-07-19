@@ -6,12 +6,14 @@ namespace App\Actions\Ads;
 
 use App\Exceptions\Domain\AdImageLimitExceededException;
 use App\Models\Ad;
+use App\Models\User;
 use Illuminate\Http\UploadedFile;
 
 final readonly class AdImageSynchroniser
 {
     public function __construct(
         private StoreAdImagesAction $store,
+        private StoreTemporaryAdImagesAction $storeTemporary,
         private DeleteAdImagesAction $delete,
     ) {}
 
@@ -21,15 +23,17 @@ final readonly class AdImageSynchroniser
      *
      * @param  list<int>  $removedImageIds
      * @param  list<UploadedFile>  $newImages
+     * @param  list<string>  $temporaryImages
      *
      * @throws AdImageLimitExceededException
      */
-    public function synchronise(Ad $ad, array $removedImageIds, array $newImages): void
+    public function synchronise(Ad $ad, User $user, array $removedImageIds, array $newImages, array $temporaryImages): void
     {
         $this->delete->execute($ad, $removedImageIds);
 
         $ad->load('images');
 
         $this->store->execute($ad, $newImages);
+        $this->storeTemporary->execute($ad, $user, $temporaryImages);
     }
 }

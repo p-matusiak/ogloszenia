@@ -42,13 +42,14 @@ final readonly class UpdateAdAction
     /**
      * @param  array<string, mixed>  $data
      * @param  list<UploadedFile>  $newImages
+     * @param  list<string>  $temporaryImages
      */
-    public function execute(Ad $ad, array $data, array $newImages = []): Ad
+    public function execute(Ad $ad, array $data, array $newImages = [], array $temporaryImages = []): Ad
     {
         $changed = [];
         $wasActivated = false;
 
-        $updated = DB::transaction(function () use ($ad, $data, $newImages, &$changed, &$wasActivated): Ad {
+        $updated = DB::transaction(function () use ($ad, $data, $newImages, $temporaryImages, &$changed, &$wasActivated): Ad {
             /** @var list<int> $removedImageIds */
             $removedImageIds = $data['removed_image_ids'] ?? [];
 
@@ -63,7 +64,7 @@ final readonly class UpdateAdAction
 
             $this->archivePreviousSlug($ad, $previousSlug);
 
-            $this->images->synchronise($ad, $removedImageIds, $newImages);
+            $this->images->synchronise($ad, $ad->user, $removedImageIds, $newImages, $temporaryImages);
             $this->syncDefaultLocation->execute($ad->user, $data);
 
             return $ad->refresh();

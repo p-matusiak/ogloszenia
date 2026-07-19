@@ -9,6 +9,7 @@ import type {
   Paginated,
   ReportReason,
   ResourceEnvelope,
+  TemporaryAdUpload,
 } from '@/types/api'
 
 const BASE = '/api/v1'
@@ -79,6 +80,20 @@ export async function reportAd(slug: string, reason: ReportReason, message?: str
   await client.post(`${BASE}/ads/${slug}/reports`, { reason, message })
 }
 
+export async function uploadTemporaryAdImages(files: File[]): Promise<TemporaryAdUpload[]> {
+  const form = new FormData()
+
+  files.forEach((file) => form.append('images[]', file))
+
+  const { data } = await client.post<{ data: TemporaryAdUpload[] }>(`${BASE}/ads/temp-images`, form)
+
+  return data.data
+}
+
+export async function deleteTemporaryAdImage(token: string): Promise<void> {
+  await client.delete(`${BASE}/ads/temp-images/${token}`)
+}
+
 /**
  * Numer telefonu nie jedzie w payloadzie ogłoszenia. Pobieramy go dopiero na
  * jawne kliknięcie „Pokaż numer”; endpoint jest limitowany po stronie serwera.
@@ -122,7 +137,7 @@ function toFormData(values: AdFormValues): FormData {
     }
   }
 
-  values.images.forEach((image) => form.append('images[]', image))
+  values.temporary_images.forEach((image) => form.append('temporary_images[]', image.token))
   values.removed_image_ids.forEach((id) => form.append('removed_image_ids[]', String(id)))
 
   return form

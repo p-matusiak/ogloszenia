@@ -245,6 +245,13 @@ export interface AdCategorySuggestion {
   available: boolean
 }
 
+export interface TemporaryAdUpload {
+  token: string
+  preview_url: string
+  original_name: string
+  size_bytes: number
+}
+
 export interface AdFormValues {
   title: string
   description: string
@@ -260,6 +267,6 @@ export interface AdFormValues {
   use_custom_phone: boolean
   contact_phone: string
   accept_terms: boolean
-  images: File[]
+  temporary_images: TemporaryAdUpload[]
   removed_image_ids: number[]
 }

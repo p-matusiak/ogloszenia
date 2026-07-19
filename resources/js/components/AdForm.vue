@@ -62,9 +62,7 @@ const previewImage = computed<string | null>(() => {
     return kept[0].url
   }
 
-  const file = props.modelValue.images[0]
-
-  return file ? URL.createObjectURL(file) : null
+  return props.modelValue.temporary_images[0]?.preview_url ?? null
 })
 
 /**
@@ -96,21 +94,21 @@ onMounted(() => void categories.load())
         title="Zdjęcia"
       >
         <ImageUploader
-          :files="modelValue.images"
+          :uploads="modelValue.temporary_images"
           :existing-images="existingImages"
           :removed-ids="modelValue.removed_image_ids"
           :max-images="MAX_IMAGES"
           :max-size-mb="MAX_IMAGE_MB"
-          @update:files="patch({ images: $event })"
+          @update:uploads="patch({ temporary_images: $event })"
           @remove-existing="patch({ removed_image_ids: [...modelValue.removed_image_ids, $event] })"
         />
         <Message
-          v-if="errors.images"
+          v-if="errors.images || errors.temporary_images || errors['temporary_images.0']"
           severity="error"
           size="small"
           variant="simple"
         >
-          {{ errors.images }}
+          {{ errors.images ?? errors.temporary_images ?? errors['temporary_images.0'] }}
         </Message>
       </FormSection>
 
