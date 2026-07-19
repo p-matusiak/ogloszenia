@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Models\Ad;
-use App\Models\AdSlugHistory;
+use App\Repositories\Contracts\AdRepository;
 use App\Services\Seo\SeoPresenter;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -19,36 +19,52 @@ use Illuminate\Http\Response;
  */
 final class AdPageController extends Controller
 {
-    public function __invoke(Request $request, string $slug, SeoPresenter $seo): Response|RedirectResponse
+    public function __invoke(Request $request, string $slug, SeoPresenter $seo, AdRepository $ads): Response|RedirectResponse
     {
-        $ad = Ad::query()->with(['category', 'images'])->where('slug', $slug)->first();
+        $ad = $ads->findDetailBySlug($slug);
 
         if ($ad === null) {
-            return $this->redirectToCurrentSlug($slug);
+            return $this->redirectToCurrentSlug($slug, $ads);
         }
 
         // Autor i administrator muszą widzieć swoje ogłoszenie także przed
         // moderacją; `forAd()` oznaczy taką stronę jako `noindex`.
         $isReadable = $ad->isPubliclyVisible() || $request->user()?->can('view', $ad) === true;
 
+        if (! $isReadable) {
+            return response()->view(
+                'app',
+                [],
+                $this->missingStatus($ad),
+            );
+        }
+
         return response()->view(
             'app',
             ['meta' => $seo->forAd($ad)],
-            $isReadable ? Response::HTTP_OK : $this->missingStatus($ad),
+            Response::HTTP_OK,
         );
     }
 
-    private function redirectToCurrentSlug(string $slug): RedirectResponse
+    private function redirectToCurrentSlug(string $slug, AdRepository $ads): RedirectResponse
     {
-        $history = AdSlugHistory::query()->with('ad')->where('slug', $slug)->first();
+        $ad = $ads->findByHistoricalSlug($slug);
 
-        if ($history === null) {
+        if ($ad === null) {
+            abort(Response::HTTP_NOT_FOUND);
+        }
+
+        if ($ad->isGone()) {
+            abort(Response::HTTP_GONE);
+        }
+
+        if (! $ad->isPubliclyVisible()) {
             abort(Response::HTTP_NOT_FOUND);
         }
 
         return redirect()->route(
             'ads.show',
-            ['slug' => $history->ad->slug],
+            ['slug' => $ad->slug],
             Response::HTTP_MOVED_PERMANENTLY,
         );
     }

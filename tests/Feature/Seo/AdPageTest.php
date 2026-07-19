@@ -52,6 +52,14 @@ it('answers 410 Gone for an expired ad instead of a soft 404', function (): void
     $this->get('/ogloszenie/wygasle')->assertStatus(410);
 });
 
+it('answers 410 Gone for a deleted ad instead of rendering it again by slug', function (): void {
+    Ad::factory()->deleted()->create(['slug' => 'usuniete']);
+
+    $this->get('/ogloszenie/usuniete')
+        ->assertStatus(410)
+        ->assertDontSee('property="og:type" content="product"', false);
+});
+
 it('treats an ad past its expiry as gone even before the hourly sweep runs', function (): void {
     // `ads:expire` chodzi raz na godzinę, więc status jest jeszcze `active`.
     Ad::factory()->lapsed()->create(['slug' => 'przeterminowane']);

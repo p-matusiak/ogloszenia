@@ -12,6 +12,10 @@ use Illuminate\Support\Collection as SupportCollection;
 
 interface AdRepository
 {
+    public function findDetailBySlug(string $slug): ?Ad;
+
+    public function findByHistoricalSlug(string $slug): ?Ad;
+
     /**
      * Lista moderatora: wszystkie statusy, opcjonalnie zawężone do jednego.
      * Publiczne wyszukiwanie aktywnych ogłoszeń obsługuje osobny kontrakt
@@ -28,6 +32,10 @@ interface AdRepository
     public function create(array $attributes): Ad;
 
     public function save(Ad $ad): Ad;
+
+    public function markAsDeleted(Ad $ad): void;
+
+    public function incrementViews(Ad $ad): void;
 
     public function countCreatedTodayForUser(int $userId): int;
 
