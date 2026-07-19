@@ -3,7 +3,7 @@ import { computed } from 'vue'
 
 import AdBadge from '@/components/ads/AdBadge.vue'
 import { formatPrice } from '@/composables/useFormatting'
-import { DELIVERY_ORDER, deliveryLabel } from '@/composables/useOfferLabels'
+import { deliveryLabel, deliveryMethodsInOrder } from '@/composables/useOfferLabels'
 import type { AdFormValues, DeliveryMethod } from '@/types/api'
 
 const props = defineProps<{ values: AdFormValues; previewImage: string | null }>()
@@ -11,17 +11,13 @@ const props = defineProps<{ values: AdFormValues; previewImage: string | null }>
 const price = computed(() => (props.values.price === null ? null : props.values.price))
 
 const locationLabel = computed(() => props.values.location)
+const selectedDeliveryMethods = computed(() => deliveryMethodsInOrder(props.values.delivery_methods))
 
 /**
- * Plakietka z ceną tylko wtedy, gdy autor ją podał. Metoda wybrana bez ceny
- * i metoda niewybrana wyglądają tak samo — myślnik — bo w obu przypadkach
- * kupujący nie wie, ile zapłaci.
+ * Pokazujemy wyłącznie wybrane metody. Brak ceny nie znaczy, że metoda znika:
+ * dla dostawy płatnej autor może chcieć ustalić koszt indywidualnie.
  */
 function priceFor(method: DeliveryMethod): string | null {
-  if (!props.values.delivery_methods.includes(method)) {
-    return null
-  }
-
   const raw = props.values.delivery_prices[method]
   if (raw === undefined || raw === '') {
     return null
@@ -79,9 +75,12 @@ function priceFor(method: DeliveryMethod): string | null {
       <h3 class="preview__legend">
         Dostawa i odbiór
       </h3>
-      <dl class="preview__delivery">
+      <dl
+        v-if="selectedDeliveryMethods.length > 0"
+        class="preview__delivery"
+      >
         <div
-          v-for="method in DELIVERY_ORDER"
+          v-for="method in selectedDeliveryMethods"
           :key="method"
           class="preview__delivery-row"
         >
@@ -95,11 +94,16 @@ function priceFor(method: DeliveryMethod): string | null {
             <span
               v-else
               class="preview__dash"
-              aria-label="niedostępne"
-            >—</span>
+            >Koszt do ustalenia</span>
           </dd>
         </div>
       </dl>
+      <p
+        v-else
+        class="preview__delivery-empty"
+      >
+        Brak wybranych metod dostawy.
+      </p>
     </section>
 
     <section class="preview__block">
@@ -214,6 +218,12 @@ function priceFor(method: DeliveryMethod): string | null {
 }
 
 .preview__dash {
+  color: var(--text-muted);
+}
+
+.preview__delivery-empty {
+  margin: 0;
+  font-size: 0.8125rem;
   color: var(--text-muted);
 }
 
