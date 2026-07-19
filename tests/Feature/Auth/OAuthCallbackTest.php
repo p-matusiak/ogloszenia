@@ -63,6 +63,33 @@ it('links a social account to an existing user with the same email', function ()
         ->exists())->toBeTrue();
 });
 
+it('relinks stale oauth account from a soft-deleted user during the same login attempt', function (): void {
+    $deletedUser = User::factory()->create(['email' => 'stale@example.com']);
+    $activeUser = User::factory()->create(['email' => 'retry@example.com']);
+
+    $deletedUser->forceFill(['email' => 'deleted-google@example.invalid'])->save();
+    $deletedUser->delete();
+
+    OAuthAccount::query()->create([
+        'user_id' => $deletedUser->id,
+        'provider' => OAuthProvider::Google,
+        'provider_user_id' => 'google-stale',
+    ]);
+
+    mockSocialiteUser('google', 'google-stale', 'retry@example.com', 'Retry User');
+
+    $this->get('/auth/google/callback')
+        ->assertRedirect('/');
+
+    expect(OAuthAccount::query()
+        ->where('provider', OAuthProvider::Google->value)
+        ->where('provider_user_id', 'google-stale')
+        ->where('user_id', $activeUser->id)
+        ->exists())->toBeTrue();
+
+    $this->assertAuthenticatedAs($activeUser);
+});
+
 it('redirects to login when social provider fails', function (): void {
     $provider = Mockery::mock('Laravel\Socialite\Contracts\Provider');
     $provider->shouldReceive('redirectUrl')->andReturnSelf();

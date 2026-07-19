@@ -13,4 +13,6 @@ interface OAuthAccountRepository
     public function findByProviderUser(OAuthProvider $provider, string $providerUserId): ?OAuthAccount;
 
     public function createForUser(User $user, OAuthProvider $provider, string $providerUserId): OAuthAccount;
+
+    public function delete(OAuthAccount $account): void;
 }
