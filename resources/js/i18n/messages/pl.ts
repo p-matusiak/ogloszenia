@@ -15,7 +15,7 @@ const messages = {
     delete: 'Usuń',
   },
   nav: {
-    siteName: 'Zunto.pl',
+    siteName: 'Zunto',
     searchPlaceholder: 'Czego szukasz?',
     searchSubmit: 'Szukaj',
     themeLight: 'Włącz jasny motyw',

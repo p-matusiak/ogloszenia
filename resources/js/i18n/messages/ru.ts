@@ -10,7 +10,7 @@ const messages = {
     delete: 'Удалить',
   },
   nav: {
-    siteName: 'Zunto.pl',
+    siteName: 'Zunto',
     searchPlaceholder: 'Что вы ищете?',
     searchSubmit: 'Искать',
     themeLight: 'Включить светлую тему',
