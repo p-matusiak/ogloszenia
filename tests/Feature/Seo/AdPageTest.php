@@ -6,7 +6,7 @@ use App\Models\Ad;
 use App\Models\AdImage;
 use App\Models\User;
 
-it('renders title, canonical and product structured data for an active ad', function (): void {
+it('renders title, canonical and offer structured data for an active priced ad', function (): void {
     $ad = Ad::factory()->create([
         'title' => 'Rower gorski Kross',
         'location' => 'Warszawa',
@@ -21,17 +21,21 @@ it('renders title, canonical and product structured data for an active ad', func
     $response->assertSee('rel="canonical" href="'.route('ads.show', ['slug' => $ad->slug]).'"', false);
     $response->assertSee('name="robots" content="index, follow"', false);
     $response->assertSee('property="og:type" content="product"', false);
-    $response->assertSee('"@type":"Product"', false);
+    $response->assertSee('"@type":"Offer"', false);
+    $response->assertSee('"itemOffered":', false);
+    $response->assertSee('"@type":"Thing"', false);
     $response->assertSee('"priceCurrency":"PLN"', false);
     $response->assertSee('"price":"1999.99"', false);
+    $response->assertDontSee('"aggregateRating"', false);
+    $response->assertDontSee('"review"', false);
 });
 
-it('omits the offer node when the ad has no price', function (): void {
+it('describes a no-price ad as a thing instead of a product offer', function (): void {
     Ad::factory()->create(['slug' => 'bez-ceny', 'price' => null]);
 
     $this->get('/ogloszenie/bez-ceny')
         ->assertOk()
-        ->assertSee('"@type":"Product"', false)
+        ->assertSee('"@type":"Thing"', false)
         ->assertDontSee('"@type":"Offer"', false);
 });
 

@@ -10,8 +10,10 @@ use App\Models\AdImage;
 use Illuminate\Support\Facades\Config;
 
 /**
- * schema.org/Product z zagnieżdżonym Offer — dokładnie ten kształt Google
- * zamienia w wynik rozszerzony z ceną, dostępnością i zdjęciem.
+ * Ogłoszenie z marketplace'u bez własnego systemu ocen nie powinno udawać
+ * produktu z recenzjami. Product bez `review` / `aggregateRating` generował w
+ * Search Console stałe ostrzeżenia, więc opisujemy stronę neutralnie:
+ * przedmiot jako Thing, a gdy jest cena — ofertę jako Offer.
  *
  * Wymaga załadowanych relacji `category` i `images`.
  */
@@ -29,9 +31,9 @@ final class AdStructuredData
     {
         $url = $this->siteUrl->route('ads.show', ['slug' => $ad->slug]);
 
-        $data = [
+        $item = [
             '@context' => 'https://schema.org',
-            '@type' => 'Product',
+            '@type' => 'Thing',
             'name' => $ad->title,
             'description' => $this->text->description($ad),
             'url' => $url,
@@ -41,26 +43,25 @@ final class AdStructuredData
         $images = $ad->images->map(fn (AdImage $image): string => $image->url())->all();
 
         if ($images !== []) {
-            $data['image'] = $images;
+            $item['image'] = $images;
         }
 
-        // Bez ceny nie ma oferty w rozumieniu schema.org. Zostaje sam Product,
-        // który nadal opisuje przedmiot — tylko bez wyniku rozszerzonego.
-        if ($ad->price !== null) {
-            $data['offers'] = $this->offer($ad, $url);
+        if ($ad->price === null) {
+            return $item;
         }
 
-        return $data;
+        return $this->offer($ad, $url, $item);
     }
 
     /**
      * @return array<string, mixed>
      */
-    private function offer(Ad $ad, string $url): array
+    private function offer(Ad $ad, string $url, array $item): array
     {
         $offer = [
             '@type' => 'Offer',
             'url' => $url,
+            'itemOffered' => $item,
             // Kropka jako separator dziesiętny i brak separatora tysięcy:
             // schema.org czyta tę wartość maszynowo, nie po polsku.
             'price' => number_format((float) $ad->price, 2, '.', ''),
