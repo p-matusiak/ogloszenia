@@ -9,6 +9,7 @@ services:
       dockerfile: docker/php/Dockerfile
     image: ${COMPOSE_PROJECT_NAME:-zunto}-php
     container_name: ${PHP_CONTAINER_NAME:-zunto-php}
+    restart: unless-stopped
     extra_hosts:
       - "mail.gesoft.pl:192.168.88.244"
     volumes:
@@ -22,6 +23,7 @@ services:
   nginx:
     image: nginx:1.27-alpine
     container_name: ${NGINX_CONTAINER_NAME:-zunto-nginx}
+    restart: unless-stopped
     ports:
       - "${APP_PORT:-8090}:80"
     volumes:
@@ -33,6 +35,7 @@ services:
   postgres:
     image: postgis/postgis:16-3.4
     container_name: ${POSTGRES_CONTAINER_NAME:-zunto-postgres}
+    restart: unless-stopped
     # Domyślne 64 MB /dev/shm wywraca równoległy VACUUM i CREATE INDEX na tabeli
     # ads: "could not resize shared memory segment ... No space left on device".
     shm_size: ${POSTGRES_SHM_SIZE:-256mb}
@@ -70,6 +73,7 @@ services:
   redis:
     image: redis:7-alpine
     container_name: ${REDIS_CONTAINER_NAME:-zunto-redis}
+    restart: unless-stopped
     command: ["redis-server", "--appendonly", "yes"]
     volumes:
       - redisdata:/data
@@ -109,7 +113,12 @@ services:
     depends_on:
       - php
 
+  # Vite HMR — tylko na życzenie. Domyślny `docker compose up -d` NIE startuje
+  # tego serwisu, więc Laravel serwuje zbudowane assety z public/build (bez public/hot).
+  # Start: docker compose --profile vite up -d node
+  # Stop:  docker compose --profile vite stop node && rm -f public/hot
   node:
+    profiles: ["vite"]
     image: node:20-alpine
     container_name: ${NODE_CONTAINER_NAME:-zunto-node}
     working_dir: /var/www/html
