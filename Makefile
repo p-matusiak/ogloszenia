@@ -29,7 +29,10 @@ STAMP      := $(shell date +%Y%m%d-%H%M%S)
 # Laravel writes to must be owned by 1000 — including on a root-owned checkout.
 RUN_UID  := 1000
 RUN_GID  := 1000
-WRITABLE := bootstrap/cache storage
+# Everything the containers create at runtime: composer writes vendor/, npm
+# writes node_modules/, vite writes public/build/, storage:link writes the
+# symlink into public/. Source files stay owned by whoever cloned the repo.
+WRITABLE := bootstrap/cache storage vendor node_modules public
 
 C_OK   := \033[0;32m
 C_WARN := \033[0;33m
@@ -63,18 +66,21 @@ env: ## Create .env from .env.example if missing
 
 .PHONY: permissions
 permissions: ## Make bootstrap/cache + storage writable by the container user (uid 1000)
-	@mkdir -p bootstrap/cache \
+	@# Create them first: chown cannot fix a directory that does not exist yet,
+	@# and composer fails with "vendor does not exist and could not be created"
+	@# when the project root belongs to root but the container runs as uid 1000.
+	@mkdir -p bootstrap/cache vendor node_modules public/build \
 		storage/app/public storage/app/private \
 		storage/framework/cache/data storage/framework/sessions \
 		storage/framework/testing storage/framework/views \
 		storage/logs
 	@if chown -R $(RUN_UID):$(RUN_GID) $(WRITABLE) 2>/dev/null; then \
-		printf "$(C_OK)bootstrap/cache + storage -> $(RUN_UID):$(RUN_GID)$(C_OFF)\n"; \
+		printf "$(C_OK)runtime dirs -> $(RUN_UID):$(RUN_GID)$(C_OFF)\n"; \
 	elif sudo -n chown -R $(RUN_UID):$(RUN_GID) $(WRITABLE) 2>/dev/null; then \
-		printf "$(C_OK)bootstrap/cache + storage -> $(RUN_UID):$(RUN_GID) (sudo)$(C_OFF)\n"; \
+		printf "$(C_OK)runtime dirs -> $(RUN_UID):$(RUN_GID) (sudo)$(C_OFF)\n"; \
 	else \
 		printf "$(C_ERR)cannot chown $(WRITABLE) to $(RUN_UID):$(RUN_GID)$(C_OFF)\n"; \
-		printf "$(C_ERR)  composer and artisan will fail with \"bootstrap/cache must be writable\"$(C_OFF)\n"; \
+		printf "$(C_ERR)  composer and artisan will fail on unwritable vendor/ and bootstrap/cache$(C_OFF)\n"; \
 		printf "$(C_ERR)  run: sudo chown -R $(RUN_UID):$(RUN_GID) $(WRITABLE)$(C_OFF)\n"; \
 		exit 1; \
 	fi
@@ -356,8 +362,8 @@ doctor: ## Diagnose 500/502: containers, DB, assets, env, recent errors
 		|| printf "$(C_OK)no public/hot (built assets are served)$(C_OFF)\n"
 	@test -L public/storage && printf "$(C_OK)storage symlink present$(C_OFF)\n" \
 		|| printf "$(C_WARN)storage symlink missing -> photos 404. fix: make storage-link$(C_OFF)\n"
-	@if $(PHP) sh -c 'test -w bootstrap/cache && test -w storage/logs && test -w storage/framework' 2>/dev/null; then \
-		printf "$(C_OK)bootstrap/cache + storage writable by the container user$(C_OFF)\n"; \
+	@if $(PHP) sh -c 'test -w bootstrap/cache && test -w storage/logs && test -w storage/framework && test -w vendor' 2>/dev/null; then \
+		printf "$(C_OK)runtime dirs writable by the container user$(C_OFF)\n"; \
 	else \
 		printf "$(C_ERR)bootstrap/cache or storage NOT writable by uid $(RUN_UID) -> composer/artisan fail, 500$(C_OFF)\n"; \
 		printf "$(C_ERR)  fix: make permissions$(C_OFF)\n"; fi
