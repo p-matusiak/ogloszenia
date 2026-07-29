@@ -5,6 +5,18 @@ Wszystko działa w kontenerach Dockera — na hoście nie jest instalowane nic p
 
 ## Uruchomienie
 
+Wszystkim steruje `Makefile` — opakowuje komendy Dockera tak, żeby żaden krok nie wypadł
+(pominięty `migrate` zostawia pustą bazę i **każde wywołanie API zwraca 500**, a pominięty
+`npm run build` wywala każdą stronę na braku manifestu Vite).
+
+```bash
+make install      # .env, uprawnienia, obrazy, kontenery, composer, klucz, migracje, seed, storage:link, assety, cache
+make doctor       # health check: kontenery, baza, assety, env, ostatnie błędy
+make help         # wszystkie cele
+```
+
+Odpowiednik „ręczny”, jeśli wolisz mieć to wprost:
+
 ```bash
 cp .env.example .env
 docker compose build
@@ -15,6 +27,153 @@ docker compose run --rm php php artisan storage:link
 docker compose run --rm node npm ci
 docker compose run --rm node npm run build
 ```
+
+## Jak budowana jest aplikacja
+
+Nie ma jednego kroku „build” — aktualne muszą być **trzy niezależne artefakty**, a pominięcie
+któregokolwiek wygląda jak „deploy nic nie zrobił” albo jak 500. `make build` i `make deploy`
+ogarniają wszystkie trzy.
+
+### 1. Obraz PHP — `make images`
+
+Jeden obraz z `docker/php/Dockerfile` (php:8.4-fpm-alpine + `pdo_pgsql`, `pgsql`, `redis`, `gd`,
+`intl`, `zip`, `bcmath`, `pcntl`, `opcache`) jest współdzielony przez **trzy** serwisy: `php`,
+`worker` i `scheduler`. Przebudowuj go tylko przy zmianie Dockerfile’a, `php.ini` albo `www.conf` —
+nie przy zmianie kodu aplikacji, który jest bind-mountowany.
+
+Compose buduje przez wtyczkę **buildx**. Gdy jej brakuje, `make images` instaluje przypiętą,
+zweryfikowaną po sha256 wtyczkę do `~/.docker/cli-plugins`, zamiast schodzić na wycofywany
+wbudowany builder Compose’a.
+
+### 2. Zależności PHP + cache Laravela — `make composer-prod`, `make cache`
+
+Katalog projektu jest bind-mountowany do `php`, `worker` i `scheduler`, więc kod PHP działa na
+żywo — bez przebudowy obrazu.
+
+**Worker kolejki to inna sprawa.** To długo żyjący proces PHP trzymający stary kod w pamięci aż do
+recyklingu (`--max-time=3600`), więc deploy musi go zrestartować. `make deploy` restartuje `php`,
+`worker` i `scheduler`.
+
+Dwie rzeczy, które potrafią zaboleć:
+
+- `docker/php/Dockerfile` ma na sztywno `USER app` = **uid 1000**. Na repozytorium sklonowanym
+  przez roota `bootstrap/cache` i `storage/` są niezapisywalne, a composer kończy się błędem
+  `The /var/www/html/bootstrap/cache directory must be present and writable`. Naprawia to
+  `make permissions` (część `install`/`install-prod`).
+- `config:cache` zamraża `.env` w `bootstrap/cache/`. Po edycji `.env` aplikacja dalej serwuje
+  stare wartości, dopóki nie zrobisz `make cache` albo `make clear`. Ten sam plik `.env` czyta
+  Compose, więc zmiana portu czy nazwy kontenera wymaga dodatkowo `make up`.
+
+### 3. Assety — `make frontend`
+
+Vite buduje do **`public/build`**, a Blade czyta `public/build/manifest.json` przez dyrektywę
+`@vite`. Katalog jest w `.gitignore` — nigdy nie przyjedzie przez `git pull`, każdy host buduje
+własny.
+
+Najgroźniejsza pułapka tego projektu to **`public/hot`**. Ten plik tworzy `npm run dev`
+(serwis `node`, profil `vite`) i dopóki istnieje, `@vite` kieruje **wszystkie** assety na dev
+server Vite. Na produkcji oznacza to, że każda strona ładuje skrypty z hosta, którego nie ma —
+czyli awaria całego serwisu przy zielonych kontenerach. Dlatego:
+
+- `make frontend` kasuje `public/hot` po zbudowaniu assetów,
+- `make doctor` świeci na czerwono, gdy plik istnieje,
+- do zatrzymania dev servera służy `make vite-stop` (zatrzymuje `node` **i** kasuje `public/hot`),
+  a nie samo `docker compose stop node`.
+
+### Co działa w którym kontenerze
+
+| Serwis | Obraz | Przebuduj obraz gdy… | Zrestartuj gdy… |
+| ------ | ----- | -------------------- | --------------- |
+| `php` | lokalny `docker/php` | zmiana Dockerfile / php.ini / www.conf | zmiana cache’ów konfiguracji |
+| `worker` | jw. (ten sam obraz) | jw. | **każda zmiana kodu** — trzyma go w pamięci |
+| `scheduler` | jw. | jw. | zmiana harmonogramu |
+| `nginx` | `nginx:1.27-alpine` | nigdy (konfiguracja montowana) | zmiana `docker/nginx/default.conf` |
+| `postgres` | `postgis/postgis:16-3.4` | nigdy | zmiana parametrów `POSTGRES_*` w `.env` |
+| `redis` | `redis:7-alpine` | nigdy | — (cache, kolejka, sesje) |
+| `node` | `node:20-alpine` | nigdy | tylko dev, profil `vite`; nie jest częścią produkcji |
+
+## Produkcja
+
+Host produkcyjny uruchamia **to samo repozytorium**, we własnym checkoucie, z własnym `.env`
+(inne nazwy kontenerów i porty, więc dev i prod mogą stać na jednej maszynie).
+
+### Pierwsza instalacja na nowym serwerze
+
+```bash
+git clone git@github.com:p-matusiak/ogloszenia.git /var/www/ogloszenia_prod
+cd /var/www/ogloszenia_prod
+cp .env.example .env
+```
+
+Zanim zainstalujesz, popraw `.env` — na publicznej stronie musi mieć `APP_ENV=production`,
+`APP_DEBUG=false`, `APP_URL=https://zunto.pl`, własne `COMPOSE_PROJECT_NAME`, `*_CONTAINER_NAME`
+i porty, oraz `TRUSTED_PROXIES` z adresem NPM (szczegóły w sekcji [Za Nginx Proxy
+Managerem](#za-nginx-proxy-managerem)).
+
+```bash
+make install-prod        # uprawnienia, obrazy, kontenery, composer --no-dev, klucz,
+                         # migrate --force, drzewo kategorii, storage:link, assety, cache
+```
+
+`install-prod` uruchamia **tylko `CategorySeeder`**, nie cały `DatabaseSeeder`. To celowe:
+`DatabaseSeeder` dosiewa ogłoszenia demo i zakłada konto `admin@zunto.local` z hasłem `password`.
+Na publicznej stronie żadna z tych rzeczy nie ma czego szukać — zwłaszcza konto administratora ze
+znanym hasłem.
+
+Odbudowa bazy produkcyjnej od zera (kasuje wszystko, wcześniej robi dumpa, bez danych demo):
+
+```bash
+make fresh-prod CONFIRM=yes
+```
+
+### Deploy aktualizacji
+
+```bash
+make deploy              # git pull --ff-only, composer --no-dev, migrate --force,
+                         # npm ci && vite build, przebudowa cache, restart php/worker/scheduler
+```
+
+### Gdy strona nie działa
+
+```bash
+make doctor
+```
+
+Sprawdza po kolei: status kontenerów, czy nginx dosięga php-fpm na `php:9000` (błąd w tym miejscu
+to dokładnie to, co produkuje **502**), kody HTTP dla `/up`, `/`, `/api/v1/categories`,
+`/api/v1/ads`, połączenie z PostgreSQL i liczbę tabel, Redis, `vendor`,
+`public/build/manifest.json`, obecność `public/hot`, symlink `public/storage`, prawa zapisu do
+`bootstrap/cache` i `storage/`, `APP_KEY`/`APP_ENV`/`APP_DEBUG`/`TRUSTED_PROXIES` oraz ostatnie
+błędy z `laravel.log`.
+
+Jak czytać wynik:
+
+| Objaw | Przyczyna | Naprawa |
+| ----- | --------- | ------- |
+| **502** na każdej ścieżce, `php:9000 unreachable` | kontener php-fpm padł albo restartuje się w pętli | `make logs`, potem `make up` / `make restart` |
+| HTML wraca 200, ale `/api/v1/...` zwraca 500, mało tabel | migracje nigdy nie poszły (świeży wolumen) | `make migrate-force seed-categories` |
+| 500 i brak `vendor` | zależności nie zainstalowane | `make composer-prod` |
+| `bootstrap/cache … must be writable` | repo sklonowane jako root, kontener działa jako uid 1000 | `make permissions` |
+| `Unable to locate file in Vite manifest` | assety nie zbudowane | `make frontend` |
+| Wszystkie strony bez stylów / skrypty 404 na porcie 5174 | został `public/hot` po dev serverze | `make vite-stop` |
+| `configured to build using Bake, but buildx isn't installed` | Compose deleguje build do buildx, brak wtyczki | `make buildx` |
+| Po deployu dalej stary kod | nieaktualne cache albo nieaktualne `public/build` | `make build` |
+| Zdjęcia 404 | brak symlinku | `make storage-link` |
+
+Jeśli `make doctor` świeci na zielono lokalnie, a publiczna domena nadal zwraca 502, awaria jest
+**przed** tym stackiem — NPM nie dosięga origin. Sprawdzaj `192.168.88.240`, nie kontenery tutaj.
+
+### Backupy
+
+Nie ma automatycznych dumpów. Przed czymkolwiek destrukcyjnym, a najlepiej z crona:
+
+```bash
+make db-backup                                # storage/backups/zunto-<stempel>.sql.gz
+make db-restore FILE=storage/backups/zunto-….sql.gz
+```
+
+`make down` zatrzymuje kontenery, nie ruszając wolumenów. **`docker compose down -v` kasuje
+`pgdata` i `redisdata`, a razem z nimi całą bazę** — bez dumpa nie ma z tego odwrotu.
 
 ## Porty i nazwy kontenerów
 
@@ -265,6 +424,15 @@ Pełny test kolejki (np. link aktywacyjny po rejestracji): zarejestruj konto na
 `/rejestracja` i sprawdź, czy `worker` przetworzył zadanie (`docker compose logs -f worker`).
 
 ## Quality gate
+
+Wszystko naraz:
+
+```bash
+make qa               # backend + frontend
+make qa-backend       # composer validate, pint, phpstan, testy
+make qa-frontend      # eslint, vue-tsc, vitest, vite build
+make e2e              # smoke API w Playwright (bez przeglądarki)
+```
 
 Backend:
 
