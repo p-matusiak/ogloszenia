@@ -85,6 +85,15 @@ permissions: ## Make bootstrap/cache + storage writable by the container user (u
 		exit 1; \
 	fi
 	@chmod -R ug+rwX $(WRITABLE) 2>/dev/null || true
+	@# artisan key:generate rewrites .env from inside the container, so the file
+	@# must belong to the container user. Kept at 0600 — it holds APP_KEY, the
+	@# database password and mail credentials.
+	@if [ -f .env ]; then \
+		chown $(RUN_UID):$(RUN_GID) .env 2>/dev/null \
+			|| sudo -n chown $(RUN_UID):$(RUN_GID) .env 2>/dev/null \
+			|| printf "$(C_WARN).env not chowned — key:generate may fail with Permission denied$(C_OFF)\n"; \
+		chmod 600 .env 2>/dev/null || true; \
+	fi
 
 .PHONY: images
 images: buildx ## Build the PHP image (php, worker, scheduler share it)
