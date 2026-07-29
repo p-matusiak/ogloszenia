@@ -19,11 +19,13 @@ use App\Http\Controllers\Api\V1\CategoriesController;
 use App\Http\Controllers\Api\V1\ConversationsController;
 use App\Http\Controllers\Api\V1\EmailVerificationNotificationController;
 use App\Http\Controllers\Api\V1\FavoritesController;
+use App\Http\Controllers\Api\V1\MobileOAuthTokenController;
+use App\Http\Controllers\Api\V1\MobileTokenController;
 use App\Http\Controllers\Api\V1\MyAdsController;
 use App\Http\Controllers\Api\V1\OAuthProvidersController;
 use App\Http\Controllers\Api\V1\PasswordResetController;
-use App\Http\Controllers\Api\V1\TemporaryAdImagesController;
 use App\Http\Controllers\Api\V1\SellersController;
+use App\Http\Controllers\Api\V1\TemporaryAdImagesController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function (): void {
@@ -46,6 +48,14 @@ Route::prefix('v1')->group(function (): void {
 
     Route::get('auth/oauth-providers', OAuthProvidersController::class);
 
+    // Klienci natywni nie mają sesji ani CSRF — logują się na token Bearer.
+    // Poza grupą `guest`, bo aplikacja mobilna nigdy nie przysyła ciasteczka
+    // sesji, a próba odświeżenia tokenu nie może odbić się o middleware.
+    Route::post('auth/token', [MobileTokenController::class, 'store'])
+        ->middleware(app()->isProduction() ? 'throttle:10,60' : 'throttle:30,1');
+    Route::post('auth/oauth/mobile/exchange', MobileOAuthTokenController::class)
+        ->middleware(app()->isProduction() ? 'throttle:10,60' : 'throttle:30,1');
+
     Route::middleware('guest')->group(function (): void {
         Route::post('auth/register', [AuthController::class, 'register'])
             ->middleware(app()->isProduction() ? 'throttle:5,60' : 'throttle:30,1');
@@ -56,6 +66,7 @@ Route::prefix('v1')->group(function (): void {
 
     Route::middleware('auth:sanctum')->group(function (): void {
         Route::post('auth/logout', [AuthController::class, 'logout']);
+        Route::delete('auth/token', [MobileTokenController::class, 'destroy']);
         Route::get('auth/me', [AuthController::class, 'me']);
         Route::post('auth/profile', [AuthController::class, 'updateProfile']);
         Route::delete('auth/account', [AuthController::class, 'deleteAccount']);

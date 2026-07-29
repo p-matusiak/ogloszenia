@@ -10,7 +10,9 @@ use App\Support\OAuthConfigurator;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Laravel\Socialite\Exceptions\DriverMissingConfigurationException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
@@ -32,6 +34,10 @@ final class OAuthController extends Controller
                 'oauth_redirect',
                 $this->safeRedirectPath($request->string('redirect')->toString()),
             );
+        }
+
+        if ($request->boolean('mobile')) {
+            $request->session()->put('oauth_mobile', true);
         }
 
         try {
@@ -59,6 +65,10 @@ final class OAuthController extends Controller
             Auth::login($user);
             $request->session()->regenerate();
 
+            if ($request->session()->pull('oauth_mobile', false) === true) {
+                return $this->mobileSuccessRedirect($user->getKey());
+            }
+
             return redirect()->to($request->session()->pull('oauth_redirect', '/'));
         } catch (UnprocessableEntityHttpException $exception) {
             Log::warning('OAuth callback rejected', [
@@ -66,14 +76,14 @@ final class OAuthController extends Controller
                 'message' => $exception->getMessage(),
             ]);
 
-            return redirect()->to($this->loginPathWithError($request, 'email_required'));
+            return $this->errorRedirect($request, 'email_required');
         } catch (\Throwable $exception) {
             Log::warning('OAuth callback failed', [
                 'provider' => $oauthProvider->value,
                 'message' => $exception->getMessage(),
             ]);
 
-            return redirect()->to($this->loginPathWithError($request, 'failed'));
+            return $this->errorRedirect($request, 'failed');
         }
     }
 
@@ -107,5 +117,25 @@ final class OAuthController extends Controller
         ]));
 
         return '/logowanie'.($query !== '' ? '?'.$query : '');
+    }
+
+    private function mobileSuccessRedirect(int|string $userId): RedirectResponse
+    {
+        $code = Str::random(64);
+
+        Cache::put('mobile_oauth:'.$code, (int) $userId, now()->addMinutes(2));
+
+        return redirect()->away('zunto://oauth/callback?'.http_build_query(['code' => $code]));
+    }
+
+    private function errorRedirect(Request $request, string $reason): RedirectResponse
+    {
+        if ($request->session()->pull('oauth_mobile', false) === true) {
+            return redirect()->away(
+                'zunto://oauth/callback?'.http_build_query(['error' => $reason]),
+            );
+        }
+
+        return redirect()->to($this->loginPathWithError($request, $reason));
     }
 }

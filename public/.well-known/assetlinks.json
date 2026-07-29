@@ -1,0 +1,14 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "pl.zunto.debug",
+      "sha256_cert_fingerprints": [
+        "86:00:EF:01:27:98:09:01:62:C0:D6:B8:FA:49:92:26:81:52:54:73:19:6F:88:E1:4D:16:E5:F9:58:53:29:58"
+      ]
+    }
+  }
+]

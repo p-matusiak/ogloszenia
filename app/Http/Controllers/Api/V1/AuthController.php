@@ -38,7 +38,7 @@ final class AuthController extends Controller
         // Signed in straight away, but unverified: the SPA shows an activation
         // banner rather than locking the visitor out of their own account.
         Auth::login($user);
-        $request->session()->regenerate();
+        $this->regenerateSession($request);
 
         return (new UserResource($user))->response()->setStatusCode(Response::HTTP_CREATED);
     }
@@ -55,7 +55,7 @@ final class AuthController extends Controller
             ]);
         }
 
-        $request->session()->regenerate();
+        $this->regenerateSession($request);
 
         $user = $request->user();
         assert($user instanceof User);
@@ -67,8 +67,7 @@ final class AuthController extends Controller
     {
         Auth::guard('web')->logout();
 
-        $request->session()->invalidate();
-        $request->session()->regenerateToken();
+        $this->invalidateSession($request);
 
         return response()->noContent();
     }
@@ -109,9 +108,30 @@ final class AuthController extends Controller
 
         Auth::guard('web')->logout();
 
-        $request->session()->invalidate();
-        $request->session()->regenerateToken();
+        $this->invalidateSession($request);
 
         return response()->noContent();
+    }
+
+    /**
+     * Sesja istnieje tylko dla żądań z przeglądarki (Sanctum stateful).
+     * Klient natywny uwierzytelnia się tokenem Bearer i sesji nie ma w ogóle,
+     * więc sięgnięcie po nią wprost kończyło się błędem 500 zamiast odpowiedzi.
+     */
+    private function regenerateSession(Request $request): void
+    {
+        if ($request->hasSession()) {
+            $request->session()->regenerate();
+        }
+    }
+
+    private function invalidateSession(Request $request): void
+    {
+        if (! $request->hasSession()) {
+            return;
+        }
+
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
     }
 }

@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Enums\OAuthProvider;
 use App\Models\OAuthAccount;
 use App\Models\User;
+use Illuminate\Support\Facades\Cache;
 use Laravel\Socialite\Contracts\User as SocialiteUser;
 use Laravel\Socialite\Facades\Socialite;
 
@@ -126,6 +127,21 @@ it('lists configured oauth providers', function (): void {
     $this->getJson('/api/v1/auth/oauth-providers')
         ->assertOk()
         ->assertJsonPath('providers', ['google']);
+});
+
+it('returns a short-lived one-time code to the mobile application', function (): void {
+    mockSocialiteUser('google', 'google-mobile', 'mobile@example.com', 'Mobile User');
+
+    $location = $this->withSession(['oauth_mobile' => true])
+        ->get('/auth/google/callback')
+        ->assertRedirectContains('zunto://oauth/callback?code=')
+        ->headers->get('Location');
+
+    parse_str((string) parse_url((string) $location, PHP_URL_QUERY), $query);
+    $code = $query['code'] ?? null;
+
+    expect($code)->toBeString()->toHaveLength(64)
+        ->and((int) Cache::get('mobile_oauth:'.$code))->toBeGreaterThan(0);
 });
 
 /**
