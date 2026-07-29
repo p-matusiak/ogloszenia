@@ -41,6 +41,13 @@ Jeden obraz z `docker/php/Dockerfile` (php:8.4-fpm-alpine + `pdo_pgsql`, `pgsql`
 `worker` i `scheduler`. Przebudowuj go tylko przy zmianie Dockerfile’a, `php.ini` albo `www.conf` —
 nie przy zmianie kodu aplikacji, który jest bind-mountowany.
 
+Współdzielenie ma haczyk: wszystkie trzy serwisy deklarują **ten sam** `image:
+${COMPOSE_PROJECT_NAME}-php`, a buildx buduje targety równolegle. Gołe `docker compose build`
+eksportuje więc trzy identyczne obrazy do jednego taga i przewraca się na
+`image "…-php:latest": already exists` — widać to tylko przy budowie od zera, bo z pełnym cache
+eksport jest za szybki, żeby się ścigać. Dlatego `make images` buduje **wyłącznie target `php`**;
+`worker` i `scheduler` podnoszą się na gotowym tagu.
+
 Compose buduje przez wtyczkę **buildx**. Gdy jej brakuje, `make images` instaluje przypiętą,
 zweryfikowaną po sha256 wtyczkę do `~/.docker/cli-plugins`, zamiast schodzić na wycofywany
 wbudowany builder Compose’a.
@@ -157,6 +164,7 @@ Jak czytać wynik:
 | `Unable to locate file in Vite manifest` | assety nie zbudowane | `make frontend` |
 | Wszystkie strony bez stylów / skrypty 404 na porcie 5174 | został `public/hot` po dev serverze | `make vite-stop` |
 | `configured to build using Bake, but buildx isn't installed` | Compose deleguje build do buildx, brak wtyczki | `make buildx` |
+| `image "…-php:latest": already exists` przy budowaniu | trzy serwisy mają ten sam tag `image:`, buildx eksportuje je równolegle | `make images` (buduje tylko target `php`), nie `docker compose build` |
 | Po deployu dalej stary kod | nieaktualne cache albo nieaktualne `public/build` | `make build` |
 | Zdjęcia 404 | brak symlinku | `make storage-link` |
 

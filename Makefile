@@ -82,7 +82,11 @@ permissions: ## Make bootstrap/cache + storage writable by the container user (u
 
 .PHONY: images
 images: buildx ## Build the PHP image (php, worker, scheduler share it)
-	$(DC) build
+	@# Only the `php` target: all three services declare the same `image:` tag,
+	@# and buildx builds them in parallel, so exporting three identical images to
+	@# one tag races and fails with `image ... already exists`. worker and
+	@# scheduler pick the tag up once it exists.
+	$(DC) build php
 
 .PHONY: buildx
 buildx: ## Ensure the docker buildx plugin exists (installs into ~/.docker/cli-plugins if not)
